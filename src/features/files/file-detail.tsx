@@ -10,8 +10,11 @@ import {
   Card,
   CircleAlert,
   CircleX,
-  Clock,
   Download,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   ListFilters,
   Pager,
   cn,
@@ -25,8 +28,8 @@ import { fileSummary, type FileRow } from './server';
 import { FILE_PAYOUTS_SPEC } from './specs';
 import { FILE_IN_FLIGHT, FILE_STATUS } from './status';
 
-function Tile({ label, n, paise, tone }: { label: string; n: number; paise: bigint | string; tone: 'ok' | 'info' | 'bad' | 'neutral' }) {
-  const color = { ok: 'text-ok', info: 'text-info', bad: 'text-bad', neutral: 'text-foreground' }[tone];
+function Tile({ label, n, paise, tone }: { label: string; n: number; paise: bigint | string; tone: 'ok' | 'info' | 'bad' }) {
+  const color = { ok: 'text-ok', info: 'text-info', bad: 'text-bad' }[tone];
   return (
     <Card className="flex flex-col gap-0.5 px-4 py-3">
       <span className="text-muted-foreground text-[11px] font-bold tracking-wide uppercase">{label}</span>
@@ -38,8 +41,8 @@ function Tile({ label, n, paise, tone }: { label: string; n: number; paise: bigi
   );
 }
 
-function Banner({ tone, icon, children }: { tone: 'warn' | 'bad' | 'info' | 'neutral'; icon: React.ReactNode; children: React.ReactNode }) {
-  const cls = { warn: 'bg-warn-soft', bad: 'bg-bad-soft', info: 'bg-info-soft', neutral: 'bg-sunken' }[tone];
+function Banner({ tone, icon, children }: { tone: 'bad' | 'neutral'; icon: React.ReactNode; children: React.ReactNode }) {
+  const cls = { bad: 'bg-bad-soft', neutral: 'bg-sunken' }[tone];
   return (
     <div className={cn('flex items-start gap-2.5 rounded-lg px-4 py-2.5 text-sm', cls)}>
       <span className="mt-0.5 shrink-0 [&_svg]:size-4">{icon}</span>
@@ -93,63 +96,50 @@ export async function FileDetail({
             </div>
             <p className="text-muted-foreground tabular truncate text-xs">
               {mode === 'admin' && <>{file.owner_email} · </>}
-              Uploaded {formatDateTime(file.created_at)} · {file.row_count} payouts · {total}
+              {file.row_count} {file.row_count === 1 ? 'payout' : 'payouts'} · {total} · Uploaded {formatDateTime(file.created_at)}
               {file.approved_at && <> · Confirmed {formatDateTime(file.approved_at)}</>}
               {finished && file.completed_at && <> · Finished {formatDateTime(file.completed_at)}</>}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="ghost">
-            <a href={`/files/${file.id}/original`}>
-              <Download />
-              Original File
-            </a>
-          </Button>
-          <Button asChild variant="outline">
-            <a href={`/files/${file.id}/status.csv`}>
-              <Download />
-              Download Status CSV
-            </a>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost">
+                <Download />
+                Download
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <a href={`/files/${file.id}/original`}>Original file</a>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a href={`/files/${file.id}/status.csv`}>Status CSV</a>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {mode === 'admin' && awaiting && (
             <RejectFileButton fileId={file.id} filename={file.original_filename} owner={file.owner_email} />
+          )}
+          {mode === 'owner' && awaiting && (
+            <>
+              <CancelFileButton fileId={file.id} filename={file.original_filename} />
+              <ConfirmPaymentButton
+                fileId={file.id}
+                count={file.row_count}
+                total={total}
+                balance={
+                  balance?.balance_paise
+                    ? { amount: formatRupees(balance.balance_paise), asOf: formatDateTime(balance.fetched_at) }
+                    : null
+                }
+              />
+            </>
           )}
         </div>
       </header>
 
-      {awaiting && mode === 'owner' && (
-        <Card className="border-primary/30 flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-primary text-[11px] font-bold tracking-[0.12em] uppercase">Review, then confirm</span>
-            <p className="max-w-2xl text-sm">
-              Check every row below. <span className="font-semibold">Confirm Payment</span> sends{' '}
-              <span className="tabular font-semibold">{file.row_count}</span> payouts totalling{' '}
-              <span className="tabular font-semibold">{total}</span> from your gateway account. Nothing has been sent
-              yet.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <CancelFileButton fileId={file.id} filename={file.original_filename} />
-            <ConfirmPaymentButton
-              fileId={file.id}
-              count={file.row_count}
-              total={total}
-              balance={
-                balance?.balance_paise
-                  ? { amount: formatRupees(balance.balance_paise), asOf: formatDateTime(balance.fetched_at) }
-                  : null
-              }
-            />
-          </div>
-        </Card>
-      )}
-      {awaiting && mode === 'admin' && (
-        <Banner tone="warn" icon={<Clock />}>
-          <span className="font-bold">Waiting for {file.owner_email ?? 'the owner'} to confirm payment</span>
-          <span>You can reject it until they do.</span>
-        </Banner>
-      )}
       {file.status === 'REJECTED' && (
         <Banner tone="bad" icon={<CircleX />}>
           <span className="font-bold">Rejected by an admin {formatDateTime(file.cancelled_at)}</span>
@@ -162,19 +152,13 @@ export async function FileDetail({
           <span>{file.cancel_reason || 'No reason given.'} Nothing from this file was sent.</span>
         </Banner>
       )}
-      {moving && (
-        <Banner tone="info" icon={<Clock />}>
-          <span className="font-bold">Paying</span>
-          <span>Payouts are sent one by one and checked with the gateway. This page updates by itself.</span>
-        </Banner>
+      {!awaiting && (
+        <div className="grid grid-cols-3 gap-3">
+          <Tile label="Paid" n={summary.paid.n} paise={summary.paid.paise} tone="ok" />
+          <Tile label="In progress" n={summary.inFlight.n} paise={summary.inFlight.paise} tone="info" />
+          <Tile label="Failed" n={summary.failed.n} paise={summary.failed.paise} tone="bad" />
+        </div>
       )}
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Tile label="Paid" n={summary.paid.n} paise={summary.paid.paise} tone="ok" />
-        <Tile label={awaiting ? 'Not confirmed' : 'In progress'} n={summary.inFlight.n} paise={summary.inFlight.paise} tone={awaiting ? 'neutral' : 'info'} />
-        <Tile label="Failed" n={summary.failed.n} paise={summary.failed.paise} tone="bad" />
-        <Tile label="File total" n={file.row_count} paise={file.total_amount_paise} tone="neutral" />
-      </div>
 
       <section className="flex flex-col gap-3">
         <ListFilters spec={spec} counts={list.counts} />

@@ -100,7 +100,7 @@ export function CancelFileButton({ fileId, filename }: { fileId: string; filenam
   return (
     <Dialog open={open} onOpenChange={(o) => (setOpen(o), o && (setReason(''), setError(null)))}>
       <DialogTrigger asChild>
-        <Button variant="outline">
+        <Button variant="ghost">
           Cancel File
         </Button>
       </DialogTrigger>
