@@ -2,7 +2,7 @@
 # HTTP proxy on :8888 (EGRESS_PROXY_URL); lib/egress.ts refuses to call out without it.
 services:
   vpn:
-    image: qmcgaw/gluetun:v3.40.0
+    image: qmcgaw/gluetun:v3.41.3
     cap_add: [NET_ADMIN]
     devices: [/dev/net/tun:/dev/net/tun]
     env_file: ${VPN_ENV_FILE:-./credentials/darwin.env}

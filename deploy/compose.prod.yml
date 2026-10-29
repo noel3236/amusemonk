@@ -1,0 +1,60 @@
+# Production stack on the EC2 box. Images come from ECR by commit SHA; the box never builds.
+# Gateway calls (gatekeeper, UAPI) leave only through the VPN proxy; RDS and S3 are reached directly.
+x-logging: &logging
+  driver: json-file
+  options: { max-size: 10m, max-file: '5' }
+
+services:
+  vpn:
+    image: qmcgaw/gluetun:v3.41.3
+    cap_add: [NET_ADMIN]
+    devices: [/dev/net/tun:/dev/net/tun]
+    environment:
+      VPN_SERVICE_PROVIDER: protonvpn
+      VPN_TYPE: openvpn
+      OPENVPN_USER: ${OPENVPN_USER}
+      OPENVPN_PASSWORD: ${OPENVPN_PASSWORD}
+      SERVER_COUNTRIES: India,Singapore
+      HTTPPROXY: 'on'
+      HTTPPROXY_LISTENING_ADDRESS: ':8888'
+      # gluetun drops inbound traffic by default; the app containers reach the proxy on this port.
+      FIREWALL_INPUT_PORTS: '8888'
+      HEALTH_TARGET_ADDRESSES: 1.1.1.1:443
+      HEALTH_VPN_DURATION_INITIAL: 30s
+    restart: unless-stopped
+    logging: *logging
+
+  web:
+    image: ${REGISTRY}/amusemonk-web:${REVISION}
+    env_file: .env
+    environment:
+      EGRESS_PROXY_URL: http://vpn:8888
+    depends_on: [vpn]
+    restart: unless-stopped
+    logging: *logging
+
+  worker:
+    image: ${REGISTRY}/amusemonk-worker:${REVISION}
+    env_file: .env
+    environment:
+      EGRESS_PROXY_URL: http://vpn:8888
+      WORKER_ID: worker-1
+    depends_on: [vpn]
+    stop_grace_period: 30s
+    restart: unless-stopped
+    logging: *logging
+
+  caddy:
+    image: caddy:2.8-alpine
+    ports: ['80:80', '443:443', '443:443/udp']
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [web]
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  caddy_data:
+  caddy_config:
