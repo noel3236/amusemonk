@@ -336,6 +336,8 @@ fixtures are unique per run, so the suite repeats without cleanup. The worker ru
 ```
 docker compose --profile dev up -d db   # MySQL 8.4 on 127.0.0.1:3306 (dev only; production is RDS)
 docker compose up -d vpn                # VPN egress proxy on 127.0.0.1:8888 — every outbound call needs it
+docker compose up -d direct-proxy       # …or, where the tunnel can't run (another VPN on the Mac), a plain proxy on the same port
+docker compose --profile app --profile novpn up -d --build   # the whole app in containers, built like prod, on :3400
 pnpm migrate                            # applies migrations/*.sql to DATABASE_URL (.env.local)
 # STORAGE_DRIVER=local keeps uploads in .storage/ (git-ignored); production uses s3
 pnpm dev                                # http://localhost:3400

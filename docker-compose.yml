@@ -1,8 +1,12 @@
-# Every outbound call (gatekeeper, UAPI) leaves through this tunnel. The app reaches it as an
-# HTTP proxy on :8888 (EGRESS_PROXY_URL); lib/egress.ts refuses to call out without it.
+# Local development. Every outbound call (gatekeeper, UAPI) leaves through an HTTP proxy on :8888
+# (EGRESS_PROXY_URL); lib/egress.ts refuses to call out without one. Two interchangeable proxies, run one:
+#   vpn           the Proton tunnel, as in production         --profile vpn
+#   direct-proxy  no tunnel, for machines where it can't run  --profile novpn
+# The whole app in containers, built like production:   docker compose --profile app --profile novpn up -d --build
 services:
   vpn:
     image: qmcgaw/gluetun:v3.41.3
+    profiles: [vpn]
     cap_add: [NET_ADMIN]
     devices: [/dev/net/tun:/dev/net/tun]
     env_file: ${VPN_ENV_FILE:-./credentials/darwin.env}
@@ -15,14 +19,30 @@ services:
       HTTPPROXY_LISTENING_ADDRESS: ':8888'
       HEALTH_TARGET_ADDRESSES: 1.1.1.1:443
       HEALTH_VPN_DURATION_INITIAL: 30s
+    networks: { default: { aliases: [egress] } }
     ports:
       - 127.0.0.1:8888:8888
     restart: unless-stopped
 
-  # Local development and tests only (`docker compose --profile dev up -d db`). Production uses RDS.
+  direct-proxy:
+    image: alpine:3.22
+    profiles: [novpn]
+    command:
+      - sh
+      - -ec
+      - |
+        apk add --no-cache tinyproxy >/dev/null
+        printf 'Port 8888\nLogLevel Connect\nDisableViaHeader Yes\n' > /tmp/tinyproxy.conf
+        exec tinyproxy -d -c /tmp/tinyproxy.conf
+    networks: { default: { aliases: [egress] } }
+    ports:
+      - 127.0.0.1:8888:8888
+    restart: unless-stopped
+
+  # Production uses RDS.
   db:
     image: mysql:8.4
-    profiles: [dev]
+    profiles: [dev, app]
     environment:
       MYSQL_DATABASE: amusemonk
       MYSQL_USER: amusemonk
@@ -37,6 +57,33 @@ services:
       interval: 3s
       retries: 40
     restart: unless-stopped
+
+  web:
+    build: { context: ., target: web, args: { REVISION: local } }
+    image: amusemonk-web:local
+    profiles: [app]
+    env_file: .env.local
+    environment: &app-env
+      DATABASE_URL: mysql://amusemonk:amusemonk-dev@db:3306/amusemonk
+      EGRESS_PROXY_URL: http://egress:8888
+      AUTH_URL: http://localhost:3400
+      AUTH_TRUST_HOST: 'true'
+      LOCAL_STORAGE_DIR: .storage
+    volumes:
+      - ./.storage:/app/.storage
+    ports:
+      - 127.0.0.1:3400:3400
+    depends_on: { db: { condition: service_healthy } }
+
+  worker:
+    build: { context: ., target: worker, args: { REVISION: local } }
+    image: amusemonk-worker:local
+    profiles: [app]
+    env_file: .env.local
+    environment: *app-env
+    volumes:
+      - ./.storage:/app/.storage
+    depends_on: { db: { condition: service_healthy } }
 
 volumes:
   db-data:
