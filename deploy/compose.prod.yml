@@ -1,5 +1,6 @@
-# The production box: prod and sandbox side by side, sharing only the VPN exit and the TLS proxy. Each environment
-# has its own images, env file (gateway, database, bucket, secrets) and is switched on once it has been deployed.
+# The production box: sandbox and the two prods (fintech, galaxy) side by side, sharing only the VPN exit and the TLS
+# proxy. Each environment has its own images, env file (gateway, database, bucket, secrets) and is switched on once it
+# has been deployed.
 # Gateway calls (gatekeeper, UAPI) leave only through the VPN proxy; RDS and S3 are reached directly.
 x-logging: &logging
   driver: json-file
@@ -35,18 +36,6 @@ services:
     restart: unless-stopped
     logging: *logging
 
-  prod-web:
-    <<: *app
-    profiles: [prod]
-    image: ${REGISTRY}/amusemonk-web:${PROD_REVISION:-none}
-    env_file: [{ path: prod.env, required: false }]
-
-  prod-worker:
-    <<: *worker
-    profiles: [prod]
-    image: ${REGISTRY}/amusemonk-worker:${PROD_REVISION:-none}
-    env_file: [{ path: prod.env, required: false }]
-
   sandbox-web:
     <<: *app
     profiles: [sandbox]
@@ -58,6 +47,30 @@ services:
     profiles: [sandbox]
     image: ${REGISTRY}/amusemonk-worker:${SANDBOX_REVISION:-none}
     env_file: [{ path: sandbox.env, required: false }]
+
+  fintech-web:
+    <<: *app
+    profiles: [fintech]
+    image: ${REGISTRY}/amusemonk-web:${FINTECH_REVISION:-none}
+    env_file: [{ path: fintech.env, required: false }]
+
+  fintech-worker:
+    <<: *worker
+    profiles: [fintech]
+    image: ${REGISTRY}/amusemonk-worker:${FINTECH_REVISION:-none}
+    env_file: [{ path: fintech.env, required: false }]
+
+  galaxy-web:
+    <<: *app
+    profiles: [galaxy]
+    image: ${REGISTRY}/amusemonk-web:${GALAXY_REVISION:-none}
+    env_file: [{ path: galaxy.env, required: false }]
+
+  galaxy-worker:
+    <<: *worker
+    profiles: [galaxy]
+    image: ${REGISTRY}/amusemonk-worker:${GALAXY_REVISION:-none}
+    env_file: [{ path: galaxy.env, required: false }]
 
   caddy:
     image: caddy:2.8-alpine

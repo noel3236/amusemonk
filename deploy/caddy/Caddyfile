@@ -9,18 +9,28 @@
 	}
 }
 
+sandbox.amusemonk.com {
+	import common
+	header X-Robots-Tag "noindex, nofollow"
+	reverse_proxy sandbox-web:3400
+}
+
+fintech.amusemonk.com {
+	import common
+	reverse_proxy fintech-web:3400
+}
+
+galaxy.amusemonk.com {
+	import common
+	reverse_proxy galaxy-web:3400
+}
+
 # The landing page: a static site with a client-side demo; it never talks to an environment.
 amusemonk.com {
 	import common
 	header Content-Security-Policy "default-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors 'none'"
 	root * /etc/caddy/site
 	file_server
-}
-
-sandbox.amusemonk.com {
-	import common
-	header X-Robots-Tag "noindex, nofollow"
-	reverse_proxy sandbox-web:3400
 }
 
 www.amusemonk.com {

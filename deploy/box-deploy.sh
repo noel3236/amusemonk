@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Runs ON the EC2 box (via SSM) for one environment: writes its env file from Parameter Store, pulls its images,
-# migrates its database, starts its containers, then reads the commit back off them. The other environment's
+# migrates its database, starts its containers, then reads the commit back off them. The other environments'
 # containers are left exactly as they are.
 set -euo pipefail
 ENV="$1" REVISION="$2"
-case $ENV in prod | sandbox) ;; *) echo "usage: box-deploy.sh prod|sandbox <revision>"; exit 2 ;; esac
+case $ENV in sandbox | fintech | galaxy) ;; *) echo "usage: box-deploy.sh sandbox|fintech|galaxy <revision>"; exit 2 ;; esac
 cd /opt/amusemonk
 TOKEN=$(curl -sX PUT http://169.254.169.254/latest/api/token -H 'X-aws-ec2-metadata-token-ttl-seconds: 60')
 REGION=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/placement/region)

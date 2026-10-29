@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Ship HEAD to one environment, then run box-deploy.sh on the box over SSM (the box has no SSH port).
-# `sandbox` builds HEAD's images for arm64 and pushes them to ECR. `prod` never builds: it takes only a commit whose
-# images are already there, i.e. one that went to sandbox first.
+# `sandbox` builds HEAD's images for arm64 and pushes them to ECR. The prods (`fintech`, `galaxy`) never build: they
+# take only a commit whose images are already there, i.e. one that went to sandbox first.
 set -euo pipefail
 ENV="${1:-}"
-case $ENV in prod | sandbox) ;; *) echo "usage: scripts/deploy.sh sandbox|prod"; exit 2 ;; esac
+case $ENV in sandbox | fintech | galaxy) ;; *) echo "usage: scripts/deploy.sh sandbox|fintech|galaxy"; exit 2 ;; esac
 REGION=eu-west-2
 REVISION=$(git rev-parse --short=12 HEAD)
 if [ -n "$(git status --porcelain)" ]; then
@@ -14,11 +14,11 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
 REGISTRY="$ACCOUNT.dkr.ecr.$REGION.amazonaws.com"
-BUCKET=$(aws ssm get-parameter --region "$REGION" --name /amusemonk/prod/S3_BUCKET --query Parameter.Value --output text)
+BUCKET=$(aws ssm get-parameter --region "$REGION" --name /amusemonk/admin/DEPLOY_BUCKET --query Parameter.Value --output text)
 INSTANCE=$(aws ec2 describe-instances --region "$REGION" --filters Name=tag:Name,Values=amusemonk Name=instance-state-name,Values=running \
   --query 'Reservations[0].Instances[0].InstanceId' --output text)
 
-[ "$ENV" = prod ] || aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$REGISTRY" >/dev/null
+[ "$ENV" != sandbox ] || aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$REGISTRY" >/dev/null
 for target in web worker; do
   if [ "$ENV" = sandbox ]; then
     docker buildx build --platform linux/arm64 --provenance=false --sbom=false --target "$target" --build-arg REVISION="$REVISION" \
