@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { activeKeySummary } from '@/features/api-keys/server';
@@ -8,10 +7,10 @@ import { listFiles } from '@/features/files/lists';
 import { FILES_SPEC } from '@/features/files/specs';
 import { RejectedTable } from '@/features/ingest/rejected-table';
 import { listRejectedUploads } from '@/features/ingest/server';
-import { UploadCard } from '@/features/ingest/upload-card';
+import { UploadDialog } from '@/features/ingest/upload-dialog';
 import { listRules } from '@/features/rules/server';
 import { pageHref, parseListQuery } from '@/lib/list-params';
-import { Button, EmptyState, FileSpreadsheet, FilterChips, Link2, ListFilters, Pager } from '@/ui';
+import { EmptyState, FileSpreadsheet, FilterChips, ListFilters, Pager } from '@/ui';
 
 export const metadata: Metadata = { title: 'Files' };
 
@@ -31,40 +30,25 @@ export default async function FilesPage({ searchParams }: { searchParams: Promis
     listRules(),
   ]);
   const ruleNames = Object.fromEntries(rules.map((r) => [r.rule_key, r.name]));
-  const views = (
-    <FilterChips
-      label="Files view"
-      items={[
-        { label: 'Files', href: '/files', active: !rejectedView, count: list.counts[''] },
-        { label: 'Rejected uploads', href: '/files?view=rejected', active: rejectedView, count: rejected.length },
-      ]}
-    />
+  const actions = (
+    <>
+      <FilterChips
+        label="Files view"
+        items={[
+          { label: 'Files', href: '/files', active: !rejectedView, count: list.counts[''] },
+          { label: 'Rejected uploads', href: '/files?view=rejected', active: rejectedView, count: rejected.length },
+        ]}
+      />
+      <UploadDialog ruleNames={ruleNames} hasKey={!!key} />
+    </>
   );
 
   return (
     <div className="flex flex-col gap-4">
       <h1 className="sr-only">Payout files</h1>
-      {key ? (
-        <UploadCard ruleNames={ruleNames} />
-      ) : (
-        <EmptyState
-          icon={<Link2 />}
-          title="Connect your API key first"
-          description="Payouts are sent from your own gateway account, so uploads open once your API key is connected."
-          action={
-            <Button asChild>
-              <Link href="/dashboard">
-                <Link2 />
-                Connect API Key
-              </Link>
-            </Button>
-          }
-        />
-      )}
-
       {rejectedView ? (
         <section className="flex flex-col gap-3">
-          <div className="flex justify-end">{views}</div>
+          <div className="flex justify-end gap-2">{actions}</div>
           <RejectedTable
             rows={rejected}
             empty={<EmptyState icon={<FileSpreadsheet />} title="No rejected uploads" description="When an upload breaks a rule, it appears here with a downloadable error report." />}
@@ -72,7 +56,7 @@ export default async function FilesPage({ searchParams }: { searchParams: Promis
         </section>
       ) : (
         <section className="flex flex-col gap-3">
-          <ListFilters spec={FILES_SPEC} counts={list.counts} actions={views} />
+          <ListFilters spec={FILES_SPEC} counts={list.counts} actions={actions} />
           <FilesTable
             mode="owner"
             rows={list.rows}
@@ -82,7 +66,7 @@ export default async function FilesPage({ searchParams }: { searchParams: Promis
               <EmptyState
                 icon={<FileSpreadsheet />}
                 title={list.counts[''] ? 'No files match' : 'No files yet'}
-                description={list.counts[''] ? 'Try another search or clear the filters.' : 'Accepted files appear here. Open one to review its rows and confirm payment.'}
+                description={list.counts[''] ? 'Try another search or clear the filters.' : 'Upload a payout file to review its rows and confirm payment.'}
               />
             }
           />

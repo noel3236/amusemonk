@@ -15,6 +15,7 @@ export * from './atoms/field';
 export * from './atoms/password-input';
 export * from './atoms/otp-field';
 export * from './atoms/error-banner';
+export * from './atoms/banner';
 export * from './atoms/empty-state';
 
 export * from './icons';

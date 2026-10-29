@@ -1,11 +1,20 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
+import { db } from '@/db';
+import { lastBalance } from '@/features/balance/server';
+import type { FileReview } from '@/features/files/file-decision';
+import { formatDateTime, formatRupees } from '@/lib/format';
 import { ingestFile, type IngestResult } from './service';
 
-export type UploadState = { result?: IngestResult; filename?: string; error?: string };
+const PREVIEW_ROWS = 100;
+
+export type UploadReview = FileReview & {
+  rows: { row: number; reference: string; name: string; account: string; ifsc: string; amount: string }[];
+};
+
+export type UploadState = { result?: IngestResult; review?: UploadReview; filename?: string; error?: string };
 
 export async function uploadFileAction(_prev: UploadState, formData: FormData): Promise<UploadState> {
   const session = await auth();
@@ -22,6 +31,37 @@ export async function uploadFileAction(_prev: UploadState, formData: FormData): 
   });
   revalidatePath('/files');
   revalidatePath('/dashboard');
-  if (result.outcome === 'ACCEPTED') redirect(`/files/${result.fileId}`);
-  return { result, filename: file.name };
+  if (result.outcome !== 'ACCEPTED') return { result, filename: file.name };
+
+  const [f, rows, balance] = await Promise.all([
+    db().selectFrom('payout_files').select('warnings_json').where('id', '=', result.fileId).executeTakeFirstOrThrow(),
+    db()
+      .selectFrom('payouts')
+      .select(['file_row', 'client_reference_id', 'beneficiary_name', 'bank_account', 'ifsc_code', 'amount_paise'])
+      .where('file_id', '=', result.fileId)
+      .orderBy('file_row')
+      .limit(PREVIEW_ROWS)
+      .execute(),
+    lastBalance(session.user.id),
+  ]);
+  return {
+    result,
+    filename: file.name,
+    review: {
+      fileId: result.fileId,
+      filename: file.name,
+      rowCount: result.rowCount,
+      total: formatRupees(result.totalPaise),
+      balance: balance?.balance_paise ? { amount: formatRupees(balance.balance_paise), asOf: formatDateTime(balance.fetched_at) } : null,
+      warnings: f.warnings_json,
+      rows: rows.map((r) => ({
+        row: r.file_row,
+        reference: r.client_reference_id,
+        name: r.beneficiary_name,
+        account: r.bank_account,
+        ifsc: r.ifsc_code,
+        amount: formatRupees(r.amount_paise),
+      })),
+    },
+  };
 }

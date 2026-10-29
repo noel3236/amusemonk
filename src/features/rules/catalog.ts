@@ -44,6 +44,7 @@ export const RULE_PARAMS = {
   duplicate_filename: none,
   duplicate_file: none,
   duplicate_content: none,
+  similar_files: z.object({ window_days: z.coerce.number().int().min(1).max(365) }),
   amount_range: z
     .object({ min_inr: inr, max_inr: inr })
     .refine((p) => Number(p.min_inr) <= Number(p.max_inr), { message: 'Minimum must not exceed maximum', path: ['max_inr'] }),
@@ -104,6 +105,7 @@ const COLUMN_OPTIONS = COLUMNS.map((c) => ({ value: c, label: c }));
 export const RULE_FIELDS: Partial<Record<RuleKind, FieldSpec[]>> = {
   max_file_size: [{ name: 'max_mb', label: 'Largest file', type: 'number', suffix: 'MB', hint: `Up to ${UPLOAD_HARD_LIMIT_MB} MB` }],
   max_rows: [{ name: 'max_rows', label: 'Most rows per file', type: 'number' }],
+  similar_files: [{ name: 'window_days', label: 'Compare with files from the last', type: 'number', suffix: 'days' }],
   amount_range: [
     { name: 'min_inr', label: 'Smallest payout', type: 'text', suffix: 'INR' },
     { name: 'max_inr', label: 'Largest payout', type: 'text', suffix: 'INR' },
@@ -164,6 +166,8 @@ export function describeParams(kind: string, params: Record<string, unknown>): s
       return `≤ ${rupees(p.max_inr)}`;
     case 'date_window':
       return `Last ${p.max_age_days} days, not future`;
+    case 'similar_files':
+      return `Warns · last ${p.window_days} days`;
     case 'max_rows_per_account':
       return `≤ ${p.max} per account`;
     case 'column_pattern':

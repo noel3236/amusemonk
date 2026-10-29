@@ -58,6 +58,7 @@ export async function loadRuleset(userId?: string): Promise<{ ruleset: Ruleset; 
     fileTotalMax: params('file_total_max'),
     dateWindow: params('date_window'),
     maxRowsPerAccount: params('max_rows_per_account'),
+    similarFiles: params('similar_files'),
     duplicateFilename: on.has('duplicate_filename'),
     duplicateFile: on.has('duplicate_file'),
     duplicateContent: on.has('duplicate_content'),

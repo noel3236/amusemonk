@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   AutoRefresh,
   Badge,
+  Banner,
   Button,
   Card,
   CircleAlert,
@@ -17,9 +18,10 @@ import {
   DropdownMenuTrigger,
   ListFilters,
   Pager,
+  Send,
   cn,
 } from '@/ui';
-import { CancelFileButton, ConfirmPaymentButton } from './file-actions';
+import { FileDecisionDialog, LookAlikeWarning, type FileReview } from './file-decision';
 import { pageHref, parseListQuery } from '@/lib/list-params';
 import type { ListSpec } from '@/lib/list-spec';
 import { listPayouts } from './lists';
@@ -38,16 +40,6 @@ function Tile({ label, n, paise, tone }: { label: string; n: number; paise: bigi
         {n} {n === 1 ? 'payout' : 'payouts'}
       </span>
     </Card>
-  );
-}
-
-function Banner({ tone, icon, children }: { tone: 'bad' | 'neutral'; icon: React.ReactNode; children: React.ReactNode }) {
-  const cls = { bad: 'bg-bad-soft', neutral: 'bg-sunken' }[tone];
-  return (
-    <div className={cn('flex items-start gap-2.5 rounded-lg px-4 py-2.5 text-sm', cls)}>
-      <span className="mt-0.5 shrink-0 [&_svg]:size-4">{icon}</span>
-      <div className="flex flex-col gap-0.5">{children}</div>
-    </div>
   );
 }
 
@@ -72,6 +64,15 @@ export async function FileDetail({
   const moving = FILE_IN_FLIGHT.includes(file.status) || (summary.inFlight.n > 0 && !!file.approved_at);
   const finished = ['COMPLETED', 'COMPLETED_WITH_FAILURES', 'FAILED'].includes(file.status);
   const total = formatRupees(file.total_amount_paise);
+  const lookAlike = awaiting ? file.warnings_json.find((w) => w.code === 'SIMILAR_FILES') : undefined;
+  const review: FileReview = {
+    fileId: file.id,
+    filename: file.original_filename,
+    rowCount: file.row_count,
+    total,
+    balance: balance?.balance_paise ? { amount: formatRupees(balance.balance_paise), asOf: formatDateTime(balance.fetched_at) } : null,
+    warnings: file.warnings_json,
+  };
   // Before confirmation nothing is in progress yet: the same chip reads "Not confirmed".
   const spec: ListSpec = awaiting
     ? { ...FILE_PAYOUTS_SPEC, quick: { ...FILE_PAYOUTS_SPEC.quick!, options: FILE_PAYOUTS_SPEC.quick!.options.map((o) => (o.value === 'in_progress' ? { ...o, label: 'Not confirmed', tone: 'neutral' as const } : o)) } }
@@ -124,22 +125,24 @@ export async function FileDetail({
           )}
           {mode === 'owner' && awaiting && (
             <>
-              <CancelFileButton fileId={file.id} filename={file.original_filename} />
-              <ConfirmPaymentButton
-                fileId={file.id}
-                count={file.row_count}
-                total={total}
-                balance={
-                  balance?.balance_paise
-                    ? { amount: formatRupees(balance.balance_paise), asOf: formatDateTime(balance.fetched_at) }
-                    : null
-                }
-              />
+              <FileDecisionDialog review={review} initialMode="cancel">
+                <Button variant="ghost">
+                  <CircleX />
+                  Cancel File
+                </Button>
+              </FileDecisionDialog>
+              <FileDecisionDialog review={review} initialMode="review">
+                <Button>
+                  <Send />
+                  Confirm Payment · {total}
+                </Button>
+              </FileDecisionDialog>
             </>
           )}
         </div>
       </header>
 
+      {lookAlike && <LookAlikeWarning warning={lookAlike} linkBase={mode === 'owner' ? '/files' : '/admin/files'} />}
       {file.status === 'REJECTED' && (
         <Banner tone="bad" icon={<CircleX />}>
           <span className="font-bold">Rejected by an admin {formatDateTime(file.cancelled_at)}</span>

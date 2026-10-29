@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import ExcelJS from 'exceljs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { cancelFile } from '@/features/files/approval';
 import { ingestFile, type IngestResult } from '@/features/ingest/service';
 import {
   createCustomRule,
@@ -142,6 +143,34 @@ describe('ingest: duplicates are per user (D-41)', () => {
     const messages = again.outcome === 'REJECTED' ? again.errors.map((e) => e.message).join(' ') : '';
     expect(messages).toContain(`theirs-${run}.csv`);
     expect(messages).not.toContain(`mine-${run}.csv`);
+  });
+});
+
+describe('look-alike files are accepted with a warning (D-44)', () => {
+  const accepted = (r: IngestResult) => {
+    if (r.outcome !== 'ACCEPTED') throw new Error(JSON.stringify(r.errors));
+    return r.fileId;
+  };
+  const warningsOf = async (fileId: string) =>
+    (await db().selectFrom('payout_files').select('warnings_json').where('id', '=', fileId).executeTakeFirstOrThrow()).warnings_json;
+
+  it('same payout count and total as a recent file: accepted, warning names that file', async () => {
+    await setRule('balance_check', false, USER); // global switch; afterAll turns it back on
+    const a = accepted(await upload('look-a', csv([row(`REFK${run}01`, '6666666601', '70.00'), row(`REFK${run}02`, '6666666602', '30.00')])));
+    const b = accepted(await upload('look-b', csv([row(`REFK${run}03`, '6666666603', '40.00'), row(`REFK${run}04`, '6666666604', '60.00')])));
+    expect(await warningsOf(a)).toEqual([]);
+    expect(await warningsOf(b)).toEqual([
+      expect.objectContaining({ code: 'SIMILAR_FILES', files: [expect.objectContaining({ id: a, name: `look-a-${run}.csv` })] }),
+    ]);
+  });
+
+  it('a cancelled look-alike and a different total are ignored', async () => {
+    const c = accepted(await upload('look-c', csv([row(`REFK${run}05`, '6666666605', '11.00'), row(`REFK${run}06`, '6666666606', '22.00')])));
+    await cancelFile(c, USER, 'test');
+    const d = accepted(await upload('look-d', csv([row(`REFK${run}07`, '6666666607', '22.00'), row(`REFK${run}08`, '6666666608', '11.00')])));
+    const e = accepted(await upload('look-e', csv([row(`REFK${run}09`, '6666666609', '22.00'), row(`REFK${run}10`, '6666666610', '11.01')])));
+    expect(await warningsOf(d)).toEqual([]);
+    expect(await warningsOf(e)).toEqual([]);
   });
 });
 

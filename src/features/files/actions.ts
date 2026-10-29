@@ -26,9 +26,13 @@ function touched(fileId: string) {
   revalidatePath('/payouts');
 }
 
-export async function confirmPaymentAction(fileId: string): Promise<Result> {
+export async function confirmPaymentAction(fileId: string, notARepeat = false): Promise<Result> {
   const session = await auth();
   if (!session?.user) return { error: 'Your session has expired. Sign in again.' };
+  const f = await db().selectFrom('payout_files').select('warnings_json').where('id', '=', fileId).where('user_id', '=', session.user.id).executeTakeFirst();
+  if (!notARepeat && f?.warnings_json.some((w) => w.code === 'SIMILAR_FILES')) {
+    return { error: 'This file looks like others of yours. Tick the box to confirm it isn’t a repeat.' };
+  }
   const r = await approveFile(fileId, session.user.id);
   if (!r.ok) return { error: r.reason };
   touched(fileId);

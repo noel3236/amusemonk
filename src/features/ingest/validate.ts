@@ -29,6 +29,7 @@ export interface Ruleset {
   fileTotalMax?: RuleParams<'file_total_max'>;
   dateWindow?: RuleParams<'date_window'>;
   maxRowsPerAccount?: RuleParams<'max_rows_per_account'>;
+  similarFiles?: RuleParams<'similar_files'>;
   duplicateFilename: boolean;
   duplicateFile: boolean;
   duplicateContent: boolean;

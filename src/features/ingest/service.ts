@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { sql } from 'kysely';
 import { db, isDuplicateKey, type Db } from '@/db';
-import type { UploadError } from '@/db/schema';
+import type { UploadError, UploadWarning } from '@/db/schema';
 import { activeCredentials } from '@/features/api-keys/server';
 import { refreshBalance } from '@/features/balance/server';
 import { loadRuleset, RuleConfigError } from '@/features/rules/server';
@@ -100,6 +100,30 @@ async function crossFileErrors(
     }
   }
   return errors;
+}
+
+// D-44: a warning, not a rejection. The user's other recent files with the same payout count and total.
+async function similarFileWarnings(q: Db, userId: string, windowDays: number, rowCount: number, totalPaise: bigint): Promise<UploadWarning[]> {
+  const files = await q
+    .selectFrom('payout_files')
+    .select(['id', 'original_filename', 'created_at'])
+    .where('user_id', '=', userId)
+    .where('row_count', '=', rowCount)
+    .where('total_amount_paise', '=', totalPaise.toString())
+    .where('status', 'not in', ['CANCELLED', 'REJECTED'])
+    .where('created_at', '>=', sql<Date>`CURRENT_TIMESTAMP(3) - INTERVAL ${windowDays} DAY`)
+    .orderBy('created_at', 'desc')
+    .limit(3)
+    .execute();
+  if (!files.length) return [];
+  return [
+    {
+      rule: 'similar_files',
+      code: 'SIMILAR_FILES',
+      message: `Same number of payouts (${rowCount}) and the same total (${formatRupees(totalPaise)}) as ${files.length === 1 ? 'a file' : `${files.length} files`} you uploaded in the last ${windowDays} days.`,
+      files: files.map((f) => ({ id: f.id, name: f.original_filename, uploadedAt: f.created_at.toISOString() })),
+    },
+  ];
 }
 
 async function inFlightPaise(q: Db, userId: string): Promise<bigint> {
@@ -211,6 +235,9 @@ export async function ingestFile(input: { userId: string; filename: string; buff
           }
         }
 
+        const warnings = ruleset.similarFiles
+          ? await similarFileWarnings(conn, userId, ruleset.similarFiles.window_days, v.payouts.length, v.totalPaise)
+          : [];
         const fileId = randomUUID();
         try {
           await conn.transaction().execute(async (tx) => {
@@ -227,7 +254,7 @@ export async function ingestFile(input: { userId: string; filename: string; buff
                 size_bytes: buffer.length,
                 row_count: v.payouts.length,
                 total_amount_paise: v.totalPaise.toString(),
-                warnings_json: '[]',
+                warnings_json: JSON.stringify(warnings),
                 rules_snapshot_json: JSON.stringify(snapshot),
               })
               .execute();

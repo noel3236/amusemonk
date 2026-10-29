@@ -44,6 +44,14 @@ export interface UploadError {
   message: string;
 }
 
+// Accepted anyway; shown on the file's review page (D-44).
+export interface UploadWarning {
+  rule: string;
+  code: string;
+  message: string;
+  files: { id: string; name: string; uploadedAt: string }[];
+}
+
 export interface UsersTable {
   id: string;
   gatekeeper_uid: string;
@@ -128,7 +136,7 @@ export interface PayoutFilesTable {
   row_count: number;
   total_amount_paise: Paise;
   status: Defaulted<FileStatus>;
-  warnings_json: Json<UploadError[]>;
+  warnings_json: Json<UploadWarning[]>;
   rules_snapshot_json: Json<unknown[]>;
   accepted_at: Stamp;
   approved_at: NullableStamp;
