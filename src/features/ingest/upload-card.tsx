@@ -1,15 +1,11 @@
 'use client';
 
 import { useActionState, useRef, useState } from 'react';
-import Link from 'next/link';
-import { formatInr } from '@/lib/money';
 import { uploadFileAction, type UploadState } from './actions';
 import {
-  ArrowRight,
   Badge,
   Button,
   Card,
-  CircleCheck,
   CircleX,
   Download,
   ErrorBanner,
@@ -98,26 +94,6 @@ export function UploadCard({ ruleNames }: { ruleNames: Record<string, string> })
       </Card>
 
       {state.error && <ErrorBanner>{state.error}</ErrorBanner>}
-
-      {result?.outcome === 'ACCEPTED' && (
-        <div role="status" className="bg-ok-soft text-ok flex flex-wrap items-center gap-3 rounded-lg px-4 py-3">
-          <CircleCheck className="size-5 shrink-0" />
-          <div className="flex flex-1 flex-col gap-0.5">
-            <span className="font-bold">{state.filename} accepted</span>
-            <span className="text-foreground text-sm">
-              <span className="tabular font-semibold">{result.rowCount}</span> payouts totalling{' '}
-              <span className="tabular font-semibold">₹{formatInr(result.totalPaise)}</span> are waiting for you
-              to confirm payment. Nothing has been sent to the gateway yet.
-            </span>
-          </div>
-          <Button asChild>
-            <Link href={`/files/${result.fileId}`}>
-              Review and Confirm
-              <ArrowRight />
-            </Link>
-          </Button>
-        </div>
-      )}
 
       {result?.outcome === 'REJECTED' && (
         <section className="flex flex-col gap-3">

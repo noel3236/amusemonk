@@ -76,7 +76,7 @@ export async function FileDetail({
 
   return (
     <div className="flex flex-col gap-4">
-      <AutoRefresh active={moving} />
+      <AutoRefresh seconds={3} active={moving} />
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <Link

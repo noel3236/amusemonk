@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { ingestFile, type IngestResult } from './service';
 
@@ -21,5 +22,6 @@ export async function uploadFileAction(_prev: UploadState, formData: FormData): 
   });
   revalidatePath('/files');
   revalidatePath('/dashboard');
+  if (result.outcome === 'ACCEPTED') redirect(`/files/${result.fileId}`);
   return { result, filename: file.name };
 }
