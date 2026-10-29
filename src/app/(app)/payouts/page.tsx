@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { listPayouts } from '@/features/files/lists';
+import { listPayouts, payoutFilterOptions } from '@/features/files/lists';
 import { PayoutsTable } from '@/features/files/payouts-table';
 import { PAYOUTS_SPEC } from '@/features/files/specs';
 import { pageHref, parseListQuery } from '@/lib/list-params';
@@ -16,12 +16,12 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
   if (!session?.user) redirect('/login');
   const sp = await searchParams;
   const q = parseListQuery(sp, PAYOUTS_SPEC);
-  const list = await listPayouts({ userId: session.user.id }, q);
+  const [list, options] = await Promise.all([listPayouts({ userId: session.user.id }, q), payoutFilterOptions(session.user.id)]);
 
   return (
     <div className="flex flex-col gap-3">
       <h1 className="sr-only">Payouts</h1>
-      <ListFilters spec={PAYOUTS_SPEC} counts={list.counts} />
+      <ListFilters spec={PAYOUTS_SPEC} counts={list.counts} options={options} />
       <PayoutsTable
         tableId="payouts"
         rows={list.rows}

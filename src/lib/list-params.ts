@@ -15,6 +15,10 @@ export interface ListQuery {
   to?: Date;
   minPaise?: bigint;
   maxPaise?: bigint;
+  minRows?: number;
+  maxRows?: number;
+  selects: Record<string, string>;
+  toggles: Record<string, boolean>;
   sort?: string;
   page: number;
 }
@@ -52,6 +56,7 @@ export function parseListQuery(sp: SP, spec: ListSpec): ListQuery {
   const q = one(sp.q)?.slice(0, 64);
   const dates = spec.dates ? dayRange(sp) : {};
   const amount = (v: string | undefined) => (spec.amount && v ? parseInrToPaise(v) ?? undefined : undefined);
+  const rows = (v: string | undefined) => (spec.rows && v && /^\d{1,7}$/.test(v) ? Number(v) : undefined);
   return {
     status: pick(spec.quick?.options, one(sp.status)),
     q,
@@ -60,11 +65,19 @@ export function parseListQuery(sp: SP, spec: ListSpec): ListQuery {
     ...dates,
     minPaise: amount(one(sp.min)),
     maxPaise: amount(one(sp.max)),
+    minRows: rows(one(sp.rows_min)),
+    maxRows: rows(one(sp.rows_max)),
+    selects: Object.fromEntries(
+      (spec.selects ?? []).flatMap((f) => {
+        const v = one(sp[f.param])?.slice(0, 64);
+        return v ? [[f.param, v]] : [];
+      })
+    ),
+    toggles: Object.fromEntries((spec.toggles ?? []).filter((t) => one(sp[t.param]) === '1').map((t) => [t.param, true])),
     sort: pick(spec.sort, one(sp.sort)),
     page: Math.max(1, Number(one(sp.page)) || 1),
   };
 }
-
 
 // Links for the pager keep every filter and change only the page.
 export function pageHref(path: string, sp: SP, page: number): string {

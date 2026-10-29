@@ -163,6 +163,7 @@ export interface PayoutsTable {
   gateway_status: string | null;
   gateway_status_code: string | null;
   gateway_status_message: string | null;
+  gateway_response_json: Json<unknown> | null;
   last_polled_at: NullableStamp;
   next_poll_at: Stamp;
   poll_failures: Defaulted<number>;

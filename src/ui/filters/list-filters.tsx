@@ -5,7 +5,7 @@ import { DateTime } from 'luxon';
 import { CalendarRange, Search, SlidersHorizontal, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { formatCount } from '@/lib/format';
-import { DATE_RANGES, LIST_PARAMS, type ListSpec, type Tone } from '@/lib/list-spec';
+import { DATE_RANGES, LIST_PARAMS, type ListSpec, type SelectOptions, type Tone } from '@/lib/list-spec';
 import { Button } from '../primitives/button';
 import { Input } from '../primitives/input';
 import { NativeSelect } from '../primitives/native-select';
@@ -110,7 +110,7 @@ function SearchBy({ fields }: { fields: NonNullable<ListSpec['search']> }) {
   );
 }
 
-function useActiveChips(spec: ListSpec) {
+function useActiveChips(spec: ListSpec, options?: SelectOptions) {
   const { get } = useUrlFilters();
   const chips: { key: string; label: string; params: string[] }[] = [];
   const range = get('range');
@@ -127,6 +127,17 @@ function useActiveChips(spec: ListSpec) {
     const label = min && max ? `₹${min} – ₹${max}` : min ? `≥ ₹${min}` : `≤ ₹${max}`;
     chips.push({ key: 'amount', label: `Amount ${label}`, params: ['min', 'max'] });
   }
+  if (spec.rows && (get('rows_min') || get('rows_max'))) {
+    const min = get('rows_min');
+    const max = get('rows_max');
+    const label = min && max ? `${min} – ${max}` : min ? `≥ ${min}` : `≤ ${max}`;
+    chips.push({ key: 'rows', label: `Rows ${label}`, params: ['rows_min', 'rows_max'] });
+  }
+  for (const f of spec.selects ?? []) {
+    const v = get(f.param);
+    if (v) chips.push({ key: f.param, label: `${f.label}: ${options?.[f.param]?.find((o) => o.value === v)?.label ?? v}`, params: [f.param] });
+  }
+  for (const t of spec.toggles ?? []) if (get(t.param) === '1') chips.push({ key: t.param, label: t.label, params: [t.param] });
   if (spec.sort && get('sort')) {
     const s = spec.sort.find((o) => o.value === get('sort'));
     if (s) chips.push({ key: 'sort', label: `Sort: ${s.label}`, params: ['sort'] });
@@ -160,14 +171,26 @@ function PanelSection({ title, children }: { title: string; children: ReactNode 
 }
 
 // Everything that isn't a quick chip or the search box. Edits a draft; nothing reaches the URL until Apply.
-function FilterPanel({ spec, activeCount }: { spec: ListSpec; activeCount: number }) {
+function FilterPanel({ spec, options, activeCount }: { spec: ListSpec; options?: SelectOptions; activeCount: number }) {
   const { get, setParams } = useUrlFilters();
   const [open, setOpen] = useState(false);
-  const keys = ['date_on', 'range', 'from', 'to', 'min', 'max', 'sort'] as const;
-  const fromUrl = () => Object.fromEntries(keys.map((k) => [k, get(k)])) as Record<(typeof keys)[number], string>;
+  const keys = [
+    'date_on',
+    'range',
+    'from',
+    'to',
+    'min',
+    'max',
+    'rows_min',
+    'rows_max',
+    'sort',
+    ...(spec.selects ?? []).map((f) => f.param),
+    ...(spec.toggles ?? []).map((t) => t.param),
+  ];
+  const fromUrl = (): Record<string, string> => Object.fromEntries(keys.map((k) => [k, get(k)]));
   const [d, setD] = useState(fromUrl);
-  const set = (patch: Partial<typeof d>) => setD((x) => ({ ...x, ...patch }));
-  if (!spec.dates && !spec.amount && !spec.sort) return null;
+  const set = (patch: Record<string, string>) => setD((x) => ({ ...x, ...patch }));
+  if (!spec.dates && !spec.amount && !spec.rows && !spec.selects && !spec.toggles && !spec.sort) return null;
 
   const apply = (e?: FormEvent) => {
     e?.preventDefault();
@@ -230,6 +253,38 @@ function FilterPanel({ spec, activeCount }: { spec: ListSpec; activeCount: numbe
                 </div>
               </PanelSection>
             )}
+            {spec.rows && (
+              <PanelSection title="Rows">
+                <div className="flex items-center gap-2">
+                  <Input inputMode="numeric" placeholder="Min" aria-label="Minimum rows" value={d.rows_min} onChange={(e) => set({ rows_min: e.target.value })} className="bg-surface tabular" />
+                  <span className="text-muted-foreground text-xs">to</span>
+                  <Input inputMode="numeric" placeholder="Max" aria-label="Maximum rows" value={d.rows_max} onChange={(e) => set({ rows_max: e.target.value })} className="bg-surface tabular" />
+                </div>
+              </PanelSection>
+            )}
+            {spec.selects?.map((f) => (
+              <PanelSection key={f.param} title={f.label}>
+                <NativeSelect aria-label={f.label} value={d[f.param]} onChange={(e) => set({ [f.param]: e.target.value })} className="bg-surface">
+                  <option value="">Any</option>
+                  {options?.[f.param]?.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </PanelSection>
+            ))}
+            {spec.toggles && (
+              <PanelSection title="Show">
+                <div className="flex flex-wrap gap-1.5">
+                  {spec.toggles.map((t) => (
+                    <Pill key={t.param} active={d[t.param] === '1'} onClick={() => set({ [t.param]: d[t.param] === '1' ? '' : '1' })}>
+                      {t.label}
+                    </Pill>
+                  ))}
+                </div>
+              </PanelSection>
+            )}
             {spec.sort && (
               <PanelSection title="Sort">
                 <div className="flex flex-wrap gap-1.5">
@@ -243,7 +298,7 @@ function FilterPanel({ spec, activeCount }: { spec: ListSpec; activeCount: numbe
             )}
           </div>
           <div className="flex shrink-0 items-center justify-between gap-2 border-t p-4">
-            <Button type="button" variant="ghost" onClick={() => setD(Object.fromEntries(keys.map((k) => [k, ''])) as typeof d)}>
+            <Button type="button" variant="ghost" onClick={() => setD(Object.fromEntries(keys.map((k) => [k, ''])))}>
               Reset
             </Button>
             <div className="flex gap-2">
@@ -264,14 +319,16 @@ function FilterPanel({ spec, activeCount }: { spec: ListSpec; activeCount: numbe
 export function ListFilters({
   spec,
   counts,
+  options,
   actions,
 }: {
   spec: ListSpec;
   counts?: Record<string, number>;
+  options?: SelectOptions;
   actions?: ReactNode;
 }) {
   const { clear, get } = useUrlFilters();
-  const chips = useActiveChips(spec);
+  const chips = useActiveChips(spec, options);
   const anything = LIST_PARAMS.some((p) => get(p));
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -302,7 +359,7 @@ export function ListFilters({
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <FilterPanel spec={spec} activeCount={chips.length} />
+        <FilterPanel spec={spec} options={options} activeCount={chips.length} />
         {actions}
       </div>
     </div>

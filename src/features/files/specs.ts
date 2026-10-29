@@ -27,6 +27,8 @@ export const PAYOUTS_SPEC: ListSpec = {
     { value: 'name', label: 'Beneficiary' },
     { value: 'utr', label: 'UTR' },
     { value: 'gateway', label: 'Gateway ID' },
+    { value: 'ifsc', label: 'IFSC' },
+    { value: 'failure', label: 'Failure reason' },
   ],
   dates: [
     { value: 'updated', label: 'Updated' },
@@ -34,6 +36,10 @@ export const PAYOUTS_SPEC: ListSpec = {
     { value: 'completed', label: 'Settled' },
   ],
   amount: true,
+  selects: [
+    { param: 'gw', label: 'Gateway status' },
+    { param: 'file', label: 'File' },
+  ],
   sort: [
     { value: 'updated_desc', label: 'Latest activity' },
     { value: 'amount_desc', label: 'Amount, high to low' },
@@ -44,7 +50,7 @@ export const PAYOUTS_SPEC: ListSpec = {
 
 export const FILE_PAYOUTS_SPEC: ListSpec = {
   quick: PAYOUT_QUICK,
-  search: PAYOUTS_SPEC.search!.slice(0, 4),
+  search: PAYOUTS_SPEC.search!.filter((f) => f.value !== 'gateway'),
   amount: true,
   sort: [
     { value: 'row_asc', label: 'File order' },
@@ -87,6 +93,8 @@ export const FILES_SPEC: ListSpec = {
     { value: 'approved', label: 'Confirmed' },
   ],
   amount: true,
+  rows: true,
+  toggles: [{ param: 'failed', label: 'Only files with failed payouts' }],
   sort: FILE_SORT,
 };
 

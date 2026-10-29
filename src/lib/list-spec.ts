@@ -7,8 +7,14 @@ export interface ListSpec {
   search?: { value: string; label: string }[];
   dates?: { value: string; label: string }[];
   amount?: boolean;
+  rows?: boolean;
+  // Single-choice filters whose options the page supplies at render time (they come from the user's data).
+  selects?: { param: string; label: string }[];
+  toggles?: { param: string; label: string }[];
   sort?: { value: string; label: string }[];
 }
+
+export type SelectOptions = Record<string, { value: string; label: string }[]>;
 
 export const DATE_RANGES = [
   { value: 'today', label: 'Today' },
@@ -19,4 +25,20 @@ export const DATE_RANGES = [
 ] as const;
 
 // Every URL param a list spec can set, so "Clear all" and pagination resets know what to touch.
-export const LIST_PARAMS = ['status', 'q', 'by', 'date_on', 'range', 'from', 'to', 'min', 'max', 'sort'] as const;
+export const LIST_PARAMS = [
+  'status',
+  'q',
+  'by',
+  'date_on',
+  'range',
+  'from',
+  'to',
+  'min',
+  'max',
+  'rows_min',
+  'rows_max',
+  'gw',
+  'file',
+  'failed',
+  'sort',
+] as const;

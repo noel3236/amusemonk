@@ -1,7 +1,9 @@
 import { sql } from 'kysely';
 import { db } from '@/db';
 import type { FileStatus, PayoutStatus } from '@/db/schema';
+import { formatDateTime } from '@/lib/format';
 import type { ListQuery } from '@/lib/list-params';
+import type { SelectOptions } from '@/lib/list-spec';
 import { FILE_GROUPS, PAYOUT_GROUPS } from './specs';
 
 const like = (v: string) => `%${v.replace(/[\\%_]/g, (c) => '\\' + c)}%`;
@@ -22,6 +24,8 @@ const PAYOUT_SEARCH = {
   name: 'p.beneficiary_name',
   utr: 'p.bank_transaction_id',
   gateway: 'p.gateway_payout_id',
+  ifsc: 'p.ifsc_code',
+  failure: 'p.failure_reason',
 } as const;
 const PAYOUT_DATES = { updated: 'p.updated_at', created: 'p.created_at', completed: 'p.completed_at' } as const;
 
@@ -63,6 +67,8 @@ export async function listPayouts(scope: { userId?: string; fileId?: string }, q
     }
     if (q.minPaise !== undefined) b = b.where('p.amount_paise', '>=', q.minPaise.toString());
     if (q.maxPaise !== undefined) b = b.where('p.amount_paise', '<=', q.maxPaise.toString());
+    if (q.selects.gw) b = b.where('p.gateway_status', '=', q.selects.gw);
+    if (q.selects.file) b = b.where('p.file_id', '=', q.selects.file);
     return b;
   };
   const filtered = () => (q.status && PAYOUT_GROUPS[q.status] ? base().where('p.status', 'in', PAYOUT_GROUPS[q.status]!) : base());
@@ -91,6 +97,31 @@ export async function listPayouts(scope: { userId?: string; fileId?: string }, q
   };
 }
 
+// Options for the payouts list's select filters, from what this user actually has.
+export async function payoutFilterOptions(userId: string): Promise<SelectOptions> {
+  const [statuses, files] = await Promise.all([
+    db()
+      .selectFrom('payouts')
+      .select('gateway_status')
+      .distinct()
+      .where('user_id', '=', userId)
+      .where('gateway_status', 'is not', null)
+      .orderBy('gateway_status')
+      .execute(),
+    db()
+      .selectFrom('payout_files')
+      .select(['id', 'original_filename', 'created_at'])
+      .where('user_id', '=', userId)
+      .orderBy('created_at', 'desc')
+      .limit(200)
+      .execute(),
+  ]);
+  return {
+    gw: statuses.map((r) => ({ value: r.gateway_status!, label: r.gateway_status! })),
+    file: files.map((f) => ({ value: f.id, label: `${f.original_filename} · ${formatDateTime(f.created_at)}` })),
+  };
+}
+
 export type PayoutRow = Awaited<ReturnType<typeof listPayouts>>['rows'][number];
 
 const FILE_SEARCH = { filename: 'f.original_filename', user: 'u.email' } as const;
@@ -110,6 +141,18 @@ export async function listFiles(scope: { userId?: string }, q: ListQuery, pageSi
     }
     if (q.minPaise !== undefined) b = b.where('f.total_amount_paise', '>=', q.minPaise.toString());
     if (q.maxPaise !== undefined) b = b.where('f.total_amount_paise', '<=', q.maxPaise.toString());
+    if (q.minRows !== undefined) b = b.where('f.row_count', '>=', q.minRows);
+    if (q.maxRows !== undefined) b = b.where('f.row_count', '<=', q.maxRows);
+    if (q.toggles.failed) {
+      b = b.where(({ exists, selectFrom }) =>
+        exists(
+          selectFrom('payouts as fp')
+            .select(sql`1`.as('one'))
+            .whereRef('fp.file_id', '=', 'f.id')
+            .where('fp.status', 'in', ['FAILED', 'REFUNDED'])
+        )
+      );
+    }
     return b;
   };
   const filtered = () => (q.status && FILE_GROUPS[q.status] ? base().where('f.status', 'in', FILE_GROUPS[q.status]!) : base());

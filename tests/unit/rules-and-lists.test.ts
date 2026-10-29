@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { describeParams, RULE_PARAMS } from '@/features/rules/catalog';
-import { PAYOUTS_SPEC } from '@/features/files/specs';
+import { FILES_SPEC, PAYOUTS_SPEC } from '@/features/files/specs';
 import { pageHref, parseListQuery } from '@/lib/list-params';
 
 describe('rule settings', () => {
@@ -25,6 +25,8 @@ describe('list query parsing', () => {
     const q = parseListQuery({ status: 'paid', q: 'abc', by: 'utr', sort: 'nope', min: '10', max: 'x', page: '3' }, PAYOUTS_SPEC);
     expect(q).toMatchObject({ status: 'paid', q: 'abc', by: 'utr', sort: undefined, minPaise: 1000n, maxPaise: undefined, page: 3 });
     expect(parseListQuery({ status: 'bogus', by: 'utr' }, PAYOUTS_SPEC)).toMatchObject({ status: undefined, by: undefined });
+    expect(parseListQuery({ gw: 'rejected', nope: 'x', rows_min: '5' }, PAYOUTS_SPEC)).toMatchObject({ selects: { gw: 'rejected' }, minRows: undefined });
+    expect(parseListQuery({ failed: '1', rows_min: '2', rows_max: '-1' }, FILES_SPEC)).toMatchObject({ toggles: { failed: true }, minRows: 2, maxRows: undefined });
   });
 
   it('turns IST days into UTC instants', () => {

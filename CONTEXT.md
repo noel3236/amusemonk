@@ -203,11 +203,11 @@ Recomputed by the worker after every payout change; also available live via aggr
 |---|---|---|
 | `/login` | anyone | gatekeeper email + password (+ OTP) |
 | `/dashboard` | user | balance (+ API key, Manage → `/profile`), waiting / in progress / paid today, files needing confirmation, recent files. No key yet ⇒ connect-key onboarding (generate, or paste) |
-| `/files` | user | upload (sample CSV), **Files** view (Review & Confirm) and **Rejected uploads** view (error report) |
+| `/files` | user | upload (sample CSV), **Files** view (Review & Confirm; filters: name, status, dates, amount, row count, only files with failed payouts) and **Rejected uploads** view (error report) |
 | `/files/[id]` | owner | rows, filters, tiles; **Confirm Payment** / **Cancel File** while waiting; per-payout fetch status; auto-refresh while paying |
 | `/files/[id]/status.csv` · `/original` | owner, super admin | original columns + status, UTR, gateway payout ID, codes, attempts, last update (IST) · the uploaded bytes |
 | `/uploads/[id]/errors.csv` | owner, super admin | a rejected upload's problems (row, column, rule, code, problem) |
-| `/payouts` | user | every payout: search (reference, account, name, UTR, gateway ID), status filter, 50 per page |
+| `/payouts` | user | every payout: search (reference, account, name, UTR, gateway ID, IFSC, failure reason), status chips, gateway status, file, dates, amount; **Raw** shows the UAPI responses (D-42); 50 per page |
 | `/profile` | user | payout API key (generate with a 2FA code, or paste; revoke), two-factor authentication on/off, password change, gateway account (D-40) |
 | `/admin/files` (+ `/[id]` read-only) | super admin | all users' files, status filter, **Reject** before confirmation |
 | `/admin/users` | super admin | amusemonk users: API key, Revoke, per-user Limits |
@@ -299,6 +299,7 @@ the repo. **Changing or losing `SECRETS_KEY` makes every stored UAPI secret unre
 | D-39 | 2026-10-30 | Two prods instead of one: `fintech` (fintech.amusemonk.com) and `galaxy` (galaxy.amusemonk.com), each isolated like D-38; the bare domain serves nothing | User decision. The first single `prod` (database `amusemonk`, user `amusemonk_app`, `/amusemonk/prod/*`) was never used and is idle pending deletion. |
 | D-40 | 2026-10-30 | A **Profile** tab, cekko-style: users generate their payout key in amusemonk (needs 2FA; created `scope: uapi`, `whitelisted_ips: ["*"]`, connected at once, secret never shown), turn 2FA on/off and change their gateway password. Pasting a key (D-34) stays as the secondary path. Revoking a generated key deletes it on the gateway; a pasted one is only disconnected (`user_api_keys.origin`) | User decision. Only amusemonk's own key is managed: other gateway keys may run the user's other integrations. A TOTP code is single-use, so replacing a key is revoke, then generate. |
 | D-41 | 2026-10-30 | Duplicate checks are per user: reference, payment (fingerprint), file name, bytes and content are compared only with the uploader's own files; unique keys are `(user_id, client_reference_id)` and `(user_id, content_fingerprint)` (migration 0008) | Each user pays from their own gateway account, and sub-users of one gateway merchant can't both use amusemonk (user, 2026-10-30), so the gateway's idempotency is per user too. Global checks rejected one customer's file because of another's, and their messages named the other customer's file. |
+| D-42 | 2026-10-30 | Every status poll stores the gateway's payout JSON verbatim in `payouts.gateway_response_json` (migration 0009); the **Raw** dialog shows it with each initiate attempt's request and response (`payout_attempts`). Owner and super admin only | User asked to see what UAPI actually returned. The extracted `gateway_status*` columns are truncated and drop fields. |
 | D-12 | 2026-10-28 | ~~Real Postgres + `mock-gateway/`~~ Integration tests run against a real MySQL (`TEST_DATABASE_URL`) and an in-process fake gateway (`tests/helpers/fake-gateway.ts`) that implements the sandbox rules | The suite exercises the real SQL (locks, unique keys, CHECKs) without touching the sandbox. |
 
 ## 11. Open questions for the product owner

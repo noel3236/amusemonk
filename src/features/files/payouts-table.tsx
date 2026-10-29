@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { formatCount, formatDateTime, formatRupees } from '@/lib/format';
 import { Badge, Copyable, DataTable, type Column } from '@/ui';
-import { FetchStatusButton } from './file-actions';
+import { FetchStatusButton, RawDataButton } from './file-actions';
 import type { PayoutRow } from './lists';
 import { payoutStatus } from './status';
 
@@ -77,14 +77,17 @@ export function PayoutsTable({
     },
     { key: 'updated', header: 'Updated', className: 'tabular text-muted-foreground text-xs', render: (p) => formatDateTime(p.updated_at) },
   ];
-  if (canFetch) {
-    columns.push({
-      key: 'actions',
-      header: '',
-      align: 'right',
-      render: (p) => (p.status !== 'PENDING' && p.status !== 'CANCELLED' ? <FetchStatusButton payoutId={p.id} reference={p.client_reference_id} /> : null),
-    });
-  }
+  columns.push({
+    key: 'actions',
+    header: '',
+    align: 'right',
+    render: (p) => (
+      <div className="flex justify-end">
+        {(p.attempt_count > 0 || p.gateway_status) && <RawDataButton payoutId={p.id} reference={p.client_reference_id} />}
+        {canFetch && p.status !== 'PENDING' && p.status !== 'CANCELLED' && <FetchStatusButton payoutId={p.id} reference={p.client_reference_id} />}
+      </div>
+    ),
+  });
 
   return (
     <DataTable

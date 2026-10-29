@@ -2,7 +2,7 @@ import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { activeCredentials } from '@/features/api-keys/server';
 import { approveFile, cancelFile } from '@/features/files/approval';
-import { listFiles, listPayouts } from '@/features/files/lists';
+import { listFiles, listPayouts, payoutFilterOptions } from '@/features/files/lists';
 import { ingestFile } from '@/features/ingest/service';
 import { listUsersForAdmin } from '@/features/users/admin';
 import type { ListQuery } from '@/lib/list-params';
@@ -17,7 +17,7 @@ import { FakeGateway } from '../helpers/fake-gateway';
 requireTestDatabase();
 
 const gw = new FakeGateway();
-const q = (o: Partial<ListQuery> = {}): ListQuery => ({ page: 1, ...o });
+const q = (o: Partial<ListQuery> = {}): ListQuery => ({ page: 1, selects: {}, toggles: {}, ...o });
 let L: { id: string; kid: string };
 const refs = { paid: `LST${run}P`, failed: `LST${run}F`, processing: `LST${run}R`, waiting: `LST${run}W`, cancelled: `LST${run}C` };
 const files: Record<string, string> = {};
@@ -36,7 +36,7 @@ beforeAll(async () => {
     row(refs.failed, '4300000002', '200.00'),
     row(refs.processing, '3300000003', '300.00'),
   ]);
-  files.waiting = await upload('waiting', [row(refs.waiting, '0310000001', '50.00')]);
+  files.waiting = await upload('waiting', [row(refs.waiting, '0310000001', '50.00', today, 'ICIC0000123')]);
   files.cancelled = await upload('cancelled', [row(refs.cancelled, '0320000001', '25.00')]);
   await cancelFile(files.cancelled, L.id, 'test');
   await approveFile(files.sent, L.id, async () => ({ ok: true, balancePaise: (10n ** 12n).toString() }));
@@ -74,6 +74,22 @@ describe('listPayouts', () => {
     expect((await listPayouts(mine, q({ q: '%', by: 'reference' }))).total).toBe(0);
   });
 
+  it('searches by IFSC and failure reason, and filters by gateway status and file', async () => {
+    const ifsc = await listPayouts(mine, q({ q: 'ICIC0000123', by: 'ifsc' }));
+    expect(ifsc.rows.map((r) => r.client_reference_id)).toEqual([refs.waiting]);
+    const failure = await listPayouts(mine, q({ q: 'invalid_txn', by: 'failure' }));
+    expect(failure.rows.map((r) => r.client_reference_id)).toEqual([refs.failed]);
+    const rejected = await listPayouts(mine, q({ selects: { gw: 'rejected' } }));
+    expect(rejected.rows.map((r) => r.client_reference_id)).toEqual([refs.failed]);
+    const raw = await db().selectFrom('payouts').select('gateway_response_json').where('id', '=', rejected.rows[0]!.id).executeTakeFirstOrThrow();
+    expect(raw.gateway_response_json).toMatchObject({ payout_status: 'rejected', status_code: 'INVALID_TXN' });
+    const oneFile = await listPayouts(mine, q({ selects: { file: files.waiting! } }));
+    expect(oneFile.rows.map((r) => r.client_reference_id)).toEqual([refs.waiting]);
+    const options = await payoutFilterOptions(L.id);
+    expect(options.gw!.map((o) => o.value)).toEqual(['processing', 'rejected', 'succeed']);
+    expect(options.file!.map((o) => o.value).sort()).toEqual(Object.values(files).sort());
+  });
+
   it('filters by amount and date, sorts, and pages', async () => {
     const big = await listPayouts(mine, q({ minPaise: 15000n, sort: 'amount_desc' }));
     expect(big.rows.map((r) => r.amount_paise)).toEqual(['30000', '20000']);
@@ -104,6 +120,14 @@ describe('listFiles and listUsersForAdmin', () => {
     expect(found.rows.map((f) => f.id)).toEqual([files.waiting]);
     const sent = (await listFiles({ userId: L.id }, q({ status: 'paying' }))).rows[0]!;
     expect([sent.paid, sent.failed].map(Number)).toEqual([1, 1]);
+  });
+
+  it('filters files by row count and by having failed payouts', async () => {
+    const multi = await listFiles({ userId: L.id }, q({ minRows: 2 }));
+    expect(multi.rows.map((f) => f.id)).toEqual([files.sent]);
+    expect((await listFiles({ userId: L.id }, q({ maxRows: 1 }))).total).toBe(2);
+    const withFailures = await listFiles({ userId: L.id }, q({ toggles: { failed: true } }));
+    expect(withFailures.rows.map((f) => f.id)).toEqual([files.sent]);
   });
 
   it('admin: searches by user email across everyone', async () => {

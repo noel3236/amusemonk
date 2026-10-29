@@ -53,6 +53,7 @@ export async function applyGatewayPayout(
       gateway_status: cut(gp.payout_status, 32),
       gateway_status_code: cut(gp.status_code, 32),
       gateway_status_message: cut(gp.status_message ?? gp.remark, 500),
+      gateway_response_json: JSON.stringify(gp),
       failure_reason:
         status === 'FAILED' || status === 'REFUNDED' ? cut(gp.status_code ?? gp.payout_status, 255) : sql`failure_reason`,
       completed_at: done ? sql`COALESCE(completed_at, CURRENT_TIMESTAMP(3))` : null,

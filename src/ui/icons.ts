@@ -1,6 +1,7 @@
 export {
   ArrowLeft,
   ArrowUpDown,
+  Braces,
   CalendarRange,
   X,
   ArrowRight,
