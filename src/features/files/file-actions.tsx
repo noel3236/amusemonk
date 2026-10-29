@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { fetchPayoutStatusAction, payoutRawAction, type RawExchange } from './actions';
-import { Braces, Button, Dialog, DialogBody, DialogContent, DialogHeader, DialogTrigger, ErrorBanner, RefreshCw, toast } from '@/ui';
+import { Braces, Button, Copyable, Dialog, DialogBody, DialogContent, DialogHeader, DialogTrigger, ErrorBanner, RefreshCw, toast } from '@/ui';
 
 export function FetchStatusButton({ payoutId, reference }: { payoutId: string; reference: string }) {
   const [pending, start] = useTransition();
@@ -55,7 +55,7 @@ export function RawDataButton({ payoutId, reference }: { payoutId: string; refer
         </Button>
       </DialogTrigger>
       <DialogContent pinned className="max-w-3xl">
-        <DialogHeader icon={<Braces />} title="Raw UAPI data" description={<span className="font-mono">{reference}</span>} />
+        <DialogHeader icon={<Braces />} title="Raw UAPI data" description={<Copyable value={reference} label="reference" />} />
         <DialogBody>
           {pending || !data ? (
             <p className="text-muted-foreground text-sm">Loading…</p>

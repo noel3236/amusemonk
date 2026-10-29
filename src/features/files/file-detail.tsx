@@ -11,6 +11,8 @@ import {
   Card,
   CircleAlert,
   CircleX,
+  Copyable,
+  CopyableAmount,
   Download,
   DropdownMenu,
   DropdownMenuContent,
@@ -36,7 +38,9 @@ function Tile({ label, n, paise, tone }: { label: string; n: number; paise: bigi
   return (
     <Card className="flex flex-col gap-0.5 px-4 py-3">
       <span className="text-muted-foreground text-[11px] font-bold tracking-wide uppercase">{label}</span>
-      <span className={cn('tabular text-lg font-extrabold tracking-tight', color)}>{formatRupees(paise)}</span>
+      <span className={cn('tabular text-lg font-extrabold tracking-tight', color)}>
+        <CopyableAmount paise={paise} />
+      </span>
       <span className="text-muted-foreground tabular text-xs">
         {n} {n === 1 ? 'payout' : 'payouts'}
       </span>
@@ -70,8 +74,8 @@ export async function FileDetail({
     fileId: file.id,
     filename: file.original_filename,
     rowCount: file.row_count,
-    total,
-    balance: balance?.balance_paise ? { amount: formatRupees(balance.balance_paise), asOf: formatDateTime(balance.fetched_at) } : null,
+    totalPaise: file.total_amount_paise,
+    balance: balance?.balance_paise ? { paise: balance.balance_paise, asOf: formatDateTime(balance.fetched_at) } : null,
     warnings: file.warnings_json,
   };
   // Before confirmation nothing is in progress yet: the same chip reads "Not confirmed".
@@ -93,12 +97,14 @@ export async function FileDetail({
           </Link>
           <div className="flex min-w-0 flex-col">
             <div className="flex min-w-0 items-center gap-2">
-              <h1 className="truncate text-lg font-bold tracking-tight">{file.original_filename}</h1>
+              <h1 className="min-w-0 truncate text-lg font-bold tracking-tight">
+                <Copyable value={file.original_filename} label="file name" mono={false} />
+              </h1>
               <Badge tone={st.tone}>{st.label}</Badge>
             </div>
             <p className="text-muted-foreground tabular truncate text-xs">
               {mode === 'admin' && <>{file.owner_email} · </>}
-              {file.row_count} {file.row_count === 1 ? 'payout' : 'payouts'} · {total} · Uploaded {formatDateTime(file.created_at)}
+              {file.row_count} {file.row_count === 1 ? 'payout' : 'payouts'} · <CopyableAmount paise={file.total_amount_paise} /> · Uploaded {formatDateTime(file.created_at)}
               {file.approved_at && <> · Confirmed {formatDateTime(file.approved_at)}</>}
               {finished && file.completed_at && <> · Finished {formatDateTime(file.completed_at)}</>}
             </p>

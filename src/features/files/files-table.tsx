@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { formatCount, formatDateTime, formatRupees } from '@/lib/format';
-import { ArrowRight, Badge, Button, DataTable, cn, type Column } from '@/ui';
+import { formatCount, formatDateTime } from '@/lib/format';
+import { ArrowRight, Badge, Button, Copyable, CopyableAmount, DataTable, cn, type Column } from '@/ui';
+import { FileLink } from './file-link';
 import type { FileListRow } from './lists';
 import { RejectFileButton } from './reject-button';
 import { FILE_STATUS } from './status';
@@ -30,8 +31,8 @@ export function FilesTable({
             header: 'User',
             render: (f: FileListRow) => (
               <>
-                <div className="font-semibold">{f.email ?? '—'}</div>
-                <div className="text-muted-foreground font-mono text-xs">{f.gatekeeper_uid}</div>
+                <div className="font-semibold">{f.email ? <Copyable value={f.email} label="email" mono={false} /> : '—'}</div>
+                <Copyable value={f.gatekeeper_uid} label="gatekeeper UID" className="text-muted-foreground" />
               </>
             ),
           },
@@ -42,9 +43,7 @@ export function FilesTable({
       header: 'File',
       className: 'max-w-80',
       render: (f) => (
-        <Link href={href(f)} title={f.original_filename} className="text-primary block truncate font-semibold hover:underline">
-          {f.original_filename}
-        </Link>
+        <FileLink href={href(f)} name={f.original_filename} />
       ),
     },
     {
@@ -75,7 +74,7 @@ export function FilesTable({
         </>
       ),
     },
-    { key: 'total', header: 'Total', align: 'right', className: 'tabular font-semibold', render: (f) => formatRupees(f.total_amount_paise) },
+    { key: 'total', header: 'Total', align: 'right', className: 'tabular font-semibold', render: (f) => <CopyableAmount paise={f.total_amount_paise} /> },
     {
       key: 'actions',
       header: '',
@@ -108,7 +107,7 @@ export function FilesTable({
       empty={empty}
       footer={{
         uploaded: <span className="text-muted-foreground text-xs font-semibold">Total · {formatCount(total)} files</span>,
-        total: <span className="tabular">{formatRupees(totalPaise)}</span>,
+        total: <CopyableAmount paise={totalPaise} className="tabular" />,
       }}
     />
   );

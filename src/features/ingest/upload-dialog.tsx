@@ -9,6 +9,8 @@ import {
   Badge,
   Button,
   CircleX,
+  Copyable,
+  CopyableAmount,
   Dialog,
   DialogBar,
   DialogBody,
@@ -46,14 +48,20 @@ function RowsPreview({ review }: { review: UploadReview }) {
             {review.rows.map((r) => (
               <TableRow key={r.row}>
                 <TableCell className="text-muted-foreground tabular text-right">{r.row}</TableCell>
-                <TableCell className="font-mono text-xs">{r.reference}</TableCell>
                 <TableCell>
-                  <div className="font-semibold">{r.name}</div>
-                  <div className="text-muted-foreground font-mono text-xs">
-                    {r.account} · {r.ifsc}
+                  <Copyable value={r.reference} label="reference" />
+                </TableCell>
+                <TableCell>
+                  <div className="font-semibold">
+                    <Copyable value={r.name} label="beneficiary name" mono={false} />
+                  </div>
+                  <div className="text-muted-foreground flex items-center gap-1 text-xs">
+                    <Copyable value={r.account} label="account number" /> · <Copyable value={r.ifsc} label="IFSC" />
                   </div>
                 </TableCell>
-                <TableCell className="tabular text-right font-semibold">{r.amount}</TableCell>
+                <TableCell className="tabular text-right font-semibold">
+                  <CopyableAmount paise={r.amountPaise} />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -144,7 +152,13 @@ export function UploadDialog({ ruleNames, hasKey }: { ruleNames: Record<string, 
         <DialogHeader
           icon={<FileSpreadsheet />}
           title={title}
-          description={shown.filename ?? 'CSV or XLSX · checked against every upload rule before anything is stored'}
+          description={
+            shown.filename ? (
+              <Copyable value={shown.filename} label="file name" mono={false} />
+            ) : (
+              'CSV or XLSX · checked against every upload rule before anything is stored'
+            )
+          }
           aside={review && !d.done && <Badge tone="warn">Waiting for confirmation</Badge>}
           closeDisabled={busy}
         />

@@ -7,6 +7,7 @@ import { ConnectGatewayCard } from '@/features/api-keys/connect-card';
 import { gatewayAccount } from '@/features/profile/server';
 import { lastBalance } from '@/features/balance/server';
 import { dashboardStats, listFilesForUser } from '@/features/files/server';
+import { FileLink } from '@/features/files/file-link';
 import { FILE_STATUS } from '@/features/files/status';
 import { formatDateTime, formatRupees } from '@/lib/format';
 import {
@@ -16,6 +17,8 @@ import {
   Button,
   Card,
   Clock,
+  Copyable,
+  CopyableAmount,
   EmptyState,
   KeyRound,
   Send,
@@ -42,7 +45,7 @@ function Tile({
 }: {
   icon: React.ReactNode;
   label: string;
-  value: string;
+  value: React.ReactNode;
   sub: React.ReactNode;
   tone?: 'primary' | 'warn' | 'info' | 'ok';
 }) {
@@ -101,13 +104,13 @@ export default async function DashboardPage() {
         <Tile
           icon={<Wallet />}
           label="Available balance"
-          value={formatRupees(balance?.balance_paise)}
+          value={<CopyableAmount paise={balance?.balance_paise} />}
           sub={
             <>
               {balanceStale ? `Couldn’t refresh at ${formatDateTime(balance!.error_at)}` : `As of ${formatDateTime(balance?.fetched_at)}`}
               <span className="mt-1 flex items-center gap-1.5">
                 <KeyRound className="size-3" />
-                <span className="text-foreground font-mono">{key.kid}</span>
+                <Copyable value={key.kid} label="API key" className="text-foreground" />
                 <span aria-hidden>·</span>
                 <Link
                   href="/profile#api-keys"
@@ -123,21 +126,21 @@ export default async function DashboardPage() {
           icon={<Clock />}
           tone="warn"
           label="Waiting for you"
-          value={formatRupees(stats.toConfirm.paise)}
+          value={<CopyableAmount paise={stats.toConfirm.paise} />}
           sub={`${plural(stats.toConfirm.n, 'payout', 'payouts')} in ${plural(waiting.length, 'file', 'files')} to confirm`}
         />
         <Tile
           icon={<Send />}
           tone="info"
           label="In progress"
-          value={formatRupees(stats.inFlight.paise)}
+          value={<CopyableAmount paise={stats.inFlight.paise} />}
           sub={`${plural(stats.inFlight.n, 'payout', 'payouts')} being sent or settled`}
         />
         <Tile
           icon={<CircleCheck />}
           tone="ok"
           label="Paid today"
-          value={formatRupees(stats.paidToday.paise)}
+          value={<CopyableAmount paise={stats.paidToday.paise} />}
           sub={
             <>
               {plural(stats.paidToday.n, 'payout', 'payouts')}
@@ -163,13 +166,17 @@ export default async function DashboardPage() {
             {waiting.slice(0, WAITING_SHOWN).map((f) => (
               <Card key={f.id} className="flex items-center justify-between gap-4 px-4 py-3">
                 <div className="flex min-w-0 flex-col gap-0.5">
-                  <span className="truncate font-bold" title={f.original_filename}>{f.original_filename}</span>
+                  <span className="min-w-0 truncate font-bold">
+                    <Copyable value={f.original_filename} label="file name" mono={false} />
+                  </span>
                   <span className="text-muted-foreground tabular text-xs">
                     {plural(f.row_count, 'payout', 'payouts')} · uploaded {formatDateTime(f.created_at)}
                   </span>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
-                  <span className="tabular font-extrabold">{formatRupees(f.total_amount_paise)}</span>
+                  <span className="tabular font-extrabold">
+                    <CopyableAmount paise={f.total_amount_paise} />
+                  </span>
                   <Button asChild size="sm">
                     <Link href={`/files/${f.id}`}>
                       Review &amp; Confirm
@@ -229,10 +236,8 @@ export default async function DashboardPage() {
               {recent.map((f) => (
                 <TableRow key={f.id}>
                   <TableCell className="tabular">{formatDateTime(f.created_at)}</TableCell>
-                  <TableCell className="max-w-80 truncate" title={f.original_filename}>
-                    <Link href={`/files/${f.id}`} className="text-primary font-semibold hover:underline">
-                      {f.original_filename}
-                    </Link>
+                  <TableCell className="max-w-80">
+                    <FileLink href={`/files/${f.id}`} name={f.original_filename} />
                   </TableCell>
                   <TableCell>
                     <Badge tone={FILE_STATUS[f.status].tone}>{FILE_STATUS[f.status].label}</Badge>
@@ -243,7 +248,9 @@ export default async function DashboardPage() {
                     <span className={cn(Number(f.failed) > 0 ? 'text-bad font-semibold' : 'text-muted-foreground')}>{f.failed}</span>
                     <span className="text-muted-foreground"> / {f.row_count}</span>
                   </TableCell>
-                  <TableCell className="tabular text-right font-semibold">{formatRupees(f.total_amount_paise)}</TableCell>
+                  <TableCell className="tabular text-right font-semibold">
+                    <CopyableAmount paise={f.total_amount_paise} />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

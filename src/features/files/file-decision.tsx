@@ -3,7 +3,7 @@
 import { useState, useTransition, type ReactNode } from 'react';
 import Link from 'next/link';
 import type { UploadWarning } from '@/db/schema';
-import { formatDateTime } from '@/lib/format';
+import { formatDateTime, formatRupees } from '@/lib/format';
 import { cancelFileAction, confirmPaymentAction } from './actions';
 import { lookAlikeIn, NOT_A_REPEAT_REQUIRED } from './look-alike';
 import {
@@ -13,6 +13,8 @@ import {
   CircleAlert,
   CircleCheck,
   CircleX,
+  Copyable,
+  CopyableAmount,
   Dialog,
   DialogBar,
   DialogBody,
@@ -30,8 +32,8 @@ export interface FileReview {
   fileId: string;
   filename: string;
   rowCount: number;
-  total: string;
-  balance: { amount: string; asOf: string } | null;
+  totalPaise: string;
+  balance: { paise: string; asOf: string } | null;
   warnings: UploadWarning[];
 }
 
@@ -45,9 +47,12 @@ export function LookAlikeWarning({ warning, linkBase = '/files' }: { warning: Up
       <span>{warning.message} Check it isn’t a repeat before you confirm.</span>
       <span className="flex flex-wrap gap-x-4 gap-y-1">
         {warning.files.map((f) => (
-          <Link key={f.id} href={`${linkBase}/${f.id}`} target="_blank" className="font-semibold underline-offset-2 hover:underline">
-            {f.name} <span className="text-muted-foreground font-normal">· {formatDateTime(new Date(f.uploadedAt))}</span>
-          </Link>
+          <span key={f.id} className="inline-flex items-center gap-1">
+            <Link href={`${linkBase}/${f.id}`} target="_blank" className="font-semibold underline-offset-2 hover:underline">
+              {f.name} <span className="text-muted-foreground font-normal">· {formatDateTime(new Date(f.uploadedAt))}</span>
+            </Link>
+            <Copyable value={f.name} display="" label="file name" />
+          </span>
         ))}
       </span>
     </Banner>
@@ -112,7 +117,7 @@ export function useFileDecision(initialMode: DecisionMode = 'review') {
 
 export type FileDecisionState = ReturnType<typeof useFileDecision>;
 
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: string }) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-muted-foreground text-[11px] font-bold tracking-wide uppercase">{label}</span>
@@ -138,6 +143,7 @@ export function FileDecision({
 }) {
   const lookAlike = lookAlikeIn(review.warnings);
   const payouts = `${review.rowCount} ${review.rowCount === 1 ? 'payout' : 'payouts'}`;
+  const total = formatRupees(review.totalPaise);
   const keep = () => (d.initialMode === 'cancel' ? onClose() : d.switchMode('review'));
 
   return (
@@ -146,7 +152,7 @@ export function FileDecision({
         {d.done ? (
           <div className="flex flex-col items-center gap-2 py-8 text-center">
             {d.done === 'confirmed' ? <CircleCheck className="text-ok size-8" /> : <CircleAlert className="text-muted-foreground size-8" />}
-            <p className="font-bold">{d.done === 'confirmed' ? `${payouts} · ${review.total} are being sent` : 'Nothing from this file was sent'}</p>
+            <p className="font-bold">{d.done === 'confirmed' ? `${payouts} · ${total} are being sent` : 'Nothing from this file was sent'}</p>
             <p className="text-muted-foreground max-w-sm text-sm">
               {d.done === 'confirmed'
                 ? 'Each row goes out once under its client_reference_id; statuses update as the gateway answers.'
@@ -166,10 +172,10 @@ export function FileDecision({
           <>
             <div className="bg-surface grid grid-cols-3 gap-4 rounded-lg border px-4 py-3">
               <Stat label="Payouts" value={String(review.rowCount)} />
-              <Stat label="File total" value={review.total} />
+              <Stat label="File total" value={<CopyableAmount paise={review.totalPaise} />} />
               <Stat
                 label="Your balance"
-                value={review.balance?.amount ?? '—'}
+                value={<CopyableAmount paise={review.balance?.paise} />}
                 sub={review.balance ? `as of ${review.balance.asOf} · checked again before sending` : 'checked with the gateway before sending'}
               />
             </div>
@@ -229,7 +235,7 @@ export function FileDecision({
             )}
             <Button disabled={d.pending} onClick={() => d.confirm(review)}>
               <Send />
-              {d.pending ? 'Confirming…' : `Confirm Payment · ${review.total}`}
+              {d.pending ? 'Confirming…' : `Confirm Payment · ${total}`}
             </Button>
           </>
         )}
@@ -255,7 +261,7 @@ export function FileDecisionDialog({ review, initialMode, children }: { review: 
         <DialogHeader
           icon={<FileSpreadsheet />}
           title={d.title}
-          description={review.filename}
+          description={<Copyable value={review.filename} label="file name" mono={false} />}
           aside={!d.done && <Badge tone="warn">Waiting for confirmation</Badge>}
           closeDisabled={d.pending}
         />

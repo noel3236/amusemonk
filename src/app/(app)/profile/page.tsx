@@ -17,7 +17,7 @@ function IdentityStrip({ account }: { account: GatewayAccount }) {
         {account.email.slice(0, 1) || '?'}
       </span>
       <span className="flex min-w-0 items-center gap-2">
-        <span className="truncate font-semibold">{account.email || '—'}</span>
+        <span className="min-w-0 truncate font-semibold">{account.email ? <Copyable value={account.email} label="email" mono={false} /> : '—'}</span>
         {account.role && <Badge>{account.role.replace(/_/g, ' ')}</Badge>}
       </span>
       {account.uid && (

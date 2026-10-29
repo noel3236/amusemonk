@@ -2,14 +2,14 @@
 
 import type { UploadError } from '@/db/schema';
 import { formatDateTime } from '@/lib/format';
-import { Button, DataTable, Download, type Column } from '@/ui';
+import { Button, Copyable, DataTable, Download, type Column } from '@/ui';
 
 type Row = { id: string; original_filename: string; created_at: Date; errors_json: UploadError[] };
 
 export function RejectedTable({ rows, empty }: { rows: Row[]; empty: React.ReactNode }) {
   const columns: Column<Row>[] = [
     { key: 'uploaded', header: 'Uploaded', className: 'tabular', render: (u) => formatDateTime(u.created_at) },
-    { key: 'file', header: 'File', className: 'max-w-72 truncate font-semibold', render: (u) => <span title={u.original_filename}>{u.original_filename}</span> },
+    { key: 'file', header: 'File', className: 'max-w-72 font-semibold', render: (u) => <Copyable value={u.original_filename} label="file name" mono={false} /> },
     { key: 'problems', header: 'Problems', align: 'right', className: 'tabular', render: (u) => u.errors_json.length },
     {
       key: 'first',

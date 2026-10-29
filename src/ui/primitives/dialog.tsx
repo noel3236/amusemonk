@@ -79,7 +79,8 @@ function DialogHeader({
 }
 
 function DialogBody({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div className={cn('bg-sunken/40 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5', className)} {...props} />;
+  // Children keep their height so the body scrolls; an `overflow-hidden` child would otherwise shrink and clip.
+  return <div className={cn('bg-sunken/40 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-5 *:shrink-0', className)} {...props} />;
 }
 
 function DialogBar({ className, ...props }: React.ComponentProps<'div'>) {

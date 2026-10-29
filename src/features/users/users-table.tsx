@@ -33,7 +33,7 @@ export function UsersTable({
       header: 'User',
       render: (u) => (
         <>
-          <div className="font-semibold">{u.email ?? '—'}</div>
+          <div className="font-semibold">{u.email ? <Copyable value={u.email} label="email" mono={false} /> : '—'}</div>
           <Copyable value={u.gatekeeper_uid} label="gatekeeper UID" className="text-muted-foreground" />
         </>
       ),

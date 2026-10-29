@@ -111,4 +111,16 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+  /* Tailwind v4 no longer gives buttons the pointer cursor. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  [role='menuitem']:not([data-disabled]),
+  [role='tab'],
+  [role='option'],
+  input[type='checkbox']:not(:disabled),
+  input[type='radio']:not(:disabled),
+  select:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
 }

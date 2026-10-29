@@ -31,7 +31,7 @@ function DropdownMenuItem({ className, ...props }: React.ComponentProps<typeof M
   return (
     <Menu.Item
       className={cn(
-        'focus:bg-hover flex h-8 cursor-default items-center gap-2 rounded-md px-2.5 text-sm outline-none select-none [&_svg]:size-4',
+        'focus:bg-hover flex h-8 items-center gap-2 rounded-md px-2.5 text-sm outline-none select-none [&_svg]:size-4',
         className
       )}
       {...props}

@@ -5,13 +5,13 @@ import { auth } from '@/auth';
 import { db } from '@/db';
 import { lastBalance } from '@/features/balance/server';
 import type { FileReview } from '@/features/files/file-decision';
-import { formatDateTime, formatRupees } from '@/lib/format';
+import { formatDateTime } from '@/lib/format';
 import { ingestFile, type IngestResult } from './service';
 
 const PREVIEW_ROWS = 100;
 
 export type UploadReview = FileReview & {
-  rows: { row: number; reference: string; name: string; account: string; ifsc: string; amount: string }[];
+  rows: { row: number; reference: string; name: string; account: string; ifsc: string; amountPaise: string }[];
 };
 
 export type UploadState = { result?: IngestResult; review?: UploadReview; filename?: string; error?: string };
@@ -51,8 +51,8 @@ export async function uploadFileAction(_prev: UploadState, formData: FormData): 
       fileId: result.fileId,
       filename: file.name,
       rowCount: result.rowCount,
-      total: formatRupees(result.totalPaise),
-      balance: balance?.balance_paise ? { amount: formatRupees(balance.balance_paise), asOf: formatDateTime(balance.fetched_at) } : null,
+      totalPaise: result.totalPaise,
+      balance: balance?.balance_paise ? { paise: balance.balance_paise, asOf: formatDateTime(balance.fetched_at) } : null,
       warnings: f.warnings_json,
       rows: rows.map((r) => ({
         row: r.file_row,
@@ -60,7 +60,7 @@ export async function uploadFileAction(_prev: UploadState, formData: FormData): 
         name: r.beneficiary_name,
         account: r.bank_account,
         ifsc: r.ifsc_code,
-        amount: formatRupees(r.amount_paise),
+        amountPaise: r.amount_paise,
       })),
     },
   };

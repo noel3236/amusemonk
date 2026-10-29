@@ -2,6 +2,8 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/cn';
+import { formatRupees } from '@/lib/format';
+import { paiseToInr } from '@/lib/money';
 
 // Spark's Copyable (registry/copyable), ported to this design system's tokens: the "pop" confirmation
 // (copy glyph crossfades to a check with a back-ease overshoot), inline so it sits in a table cell.
@@ -15,7 +17,8 @@ export function Copyable({
   className,
 }: {
   value: string;
-  // Rendered instead of `value` (e.g. a shortened form); the whole value is still what's copied.
+  // Rendered instead of `value` (e.g. a shortened form); the whole value is still what's copied. '' shows
+  // only the icon, for a value already on screen as a link.
   display?: string;
   label?: string;
   mono?: boolean;
@@ -24,6 +27,7 @@ export function Copyable({
   const [copied, setCopied] = React.useState(false);
   const timer = React.useRef<number | undefined>(undefined);
   React.useEffect(() => () => window.clearTimeout(timer.current), []);
+  const text = display ?? value;
 
   return (
     <button
@@ -44,7 +48,7 @@ export function Copyable({
         className
       )}
     >
-      <span className={cn('truncate', mono ? 'font-mono text-xs' : 'text-sm')}>{display ?? value}</span>
+      {text !== '' && <span className={cn('truncate', mono && 'font-mono text-xs')}>{text}</span>}
       <span aria-hidden className="relative inline-flex size-3.5 shrink-0">
         <svg
           viewBox="0 0 24 24"
@@ -54,7 +58,7 @@ export function Copyable({
           strokeLinecap="round"
           strokeLinejoin="round"
           className={cn(
-            'text-muted-foreground absolute inset-0 size-3.5 opacity-0 transition-[opacity,transform] duration-300 group-hover/copy:opacity-100 group-focus-visible/copy:opacity-100',
+            'text-muted-foreground group-hover/copy:text-foreground absolute inset-0 size-3.5 transition-[opacity,transform,color] duration-300',
             EASE,
             'group-data-[copied]/copy:scale-0 group-data-[copied]/copy:-rotate-90 group-data-[copied]/copy:opacity-0'
           )}
@@ -80,4 +84,11 @@ export function Copyable({
       </span>
     </button>
   );
+}
+
+// Shows ₹12,34,567.89 and copies 1234567.89, which pastes cleanly into a sheet or a bank form.
+export function CopyableAmount({ paise, className }: { paise: string | bigint | null | undefined; className?: string }) {
+  if (paise === null || paise === undefined) return <span className={className}>—</span>;
+  const shown = formatRupees(paise);
+  return <Copyable value={paiseToInr(paise)} display={shown} label={`amount ${shown}`} mono={false} className={className} />;
 }

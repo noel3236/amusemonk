@@ -1,9 +1,9 @@
 'use client';
 
-import Link from 'next/link';
-import { formatCount, formatDateTime, formatRupees } from '@/lib/format';
-import { Badge, Copyable, DataTable, type Column } from '@/ui';
+import { formatCount, formatDateTime } from '@/lib/format';
+import { Badge, Copyable, CopyableAmount, DataTable, type Column } from '@/ui';
 import { FetchStatusButton, RawDataButton } from './file-actions';
+import { FileLink } from './file-link';
 import type { PayoutRow } from './lists';
 import { payoutStatus } from './status';
 
@@ -32,9 +32,7 @@ export function PayoutsTable({
           className: 'max-w-56',
           render: (p) => (
             <div className="min-w-0">
-              <Link href={`/files/${p.file_id}`} className="text-primary block truncate font-semibold hover:underline">
-                {p.original_filename}
-              </Link>
+              <FileLink href={`/files/${p.file_id}`} name={p.original_filename} />
               <div className="text-muted-foreground text-xs">row {p.file_row}</div>
             </div>
           ),
@@ -46,14 +44,16 @@ export function PayoutsTable({
       header: 'Beneficiary',
       render: (p) => (
         <>
-          <div className="font-semibold">{p.beneficiary_name}</div>
-          <div className="text-muted-foreground font-mono text-xs">
-            {p.bank_account} · {p.ifsc_code}
+          <div className="font-semibold">
+            <Copyable value={p.beneficiary_name} label="beneficiary name" mono={false} />
+          </div>
+          <div className="text-muted-foreground flex items-center gap-1 text-xs">
+            <Copyable value={p.bank_account} label="account number" /> · <Copyable value={p.ifsc_code} label="IFSC" />
           </div>
         </>
       ),
     },
-    { key: 'amount', header: 'Amount', align: 'right', className: 'tabular font-semibold', render: (p) => formatRupees(p.amount_paise) },
+    { key: 'amount', header: 'Amount', align: 'right', className: 'tabular font-semibold', render: (p) => <CopyableAmount paise={p.amount_paise} /> },
     {
       key: 'status',
       header: 'Status',
@@ -99,7 +99,7 @@ export function PayoutsTable({
       empty={empty}
       footer={{
         reference: <span className="tabular text-xs">Total · {formatCount(total)} payouts</span>,
-        amount: <span className="tabular">{formatRupees(totalPaise)}</span>,
+        amount: <CopyableAmount paise={totalPaise} className="tabular" />,
       }}
     />
   );
