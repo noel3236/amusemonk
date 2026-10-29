@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { formatCount } from '@/lib/format';
 import { UPLOAD_HARD_LIMIT_MB } from '@/lib/limits';
 import { formatInr, parseInrToPaise } from '@/lib/money';
 
@@ -79,7 +80,6 @@ export const OVERRIDABLE_KINDS = [
   'max_rows_per_account',
 ] as const;
 export type CustomKind = (typeof CUSTOM_KINDS)[number];
-export type BuiltinKind = Exclude<RuleKind, CustomKind>;
 
 export function isRuleKind(k: string): k is RuleKind {
   return k in RULE_PARAMS;
@@ -157,7 +157,7 @@ export function describeParams(kind: string, params: Record<string, unknown>): s
     case 'max_file_size':
       return `≤ ${p.max_mb} MB`;
     case 'max_rows':
-      return `≤ ${Number(p.max_rows).toLocaleString('en-IN')} rows`;
+      return `≤ ${formatCount(Number(p.max_rows))} rows`;
     case 'amount_range':
       return `${rupees(p.min_inr)} – ${rupees(p.max_inr)}`;
     case 'file_total_max':

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { formatDateTime, formatRupees } from '@/lib/format';
+import { formatCount, formatDateTime, formatRupees } from '@/lib/format';
 import { Badge, Copyable, DataTable, type Column } from '@/ui';
 import { FetchStatusButton } from './file-actions';
 import type { PayoutRow } from './lists';
@@ -95,7 +95,7 @@ export function PayoutsTable({
       defaultPinned={['reference']}
       empty={empty}
       footer={{
-        reference: <span className="tabular text-xs">Total · {total.toLocaleString('en-IN')} payouts</span>,
+        reference: <span className="tabular text-xs">Total · {formatCount(total)} payouts</span>,
         amount: <span className="tabular">{formatRupees(totalPaise)}</span>,
       }}
     />

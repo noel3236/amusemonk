@@ -1,4 +1,6 @@
+import { DateTime } from 'luxon';
 import type { UploadError } from '@/db/schema';
+import { DISPLAY_ZONE } from '@/lib/format';
 import { formatInr, parseInrToPaise } from '@/lib/money';
 import { COLUMNS, type Column, type CustomKind, type RuleParams } from '@/features/rules/catalog';
 import { canonicalContentHash, rowFingerprint } from './fingerprint';
@@ -64,7 +66,7 @@ function daysBetween(a: string, b: string): number {
 }
 
 export function todayIst(now = new Date()): string {
-  return new Date(now.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+  return DateTime.fromJSDate(now).setZone(DISPLAY_ZONE).toISODate()!;
 }
 
 function headerErrors(headers: string[]): UploadError[] {

@@ -37,7 +37,6 @@ export interface GatewayBalance {
   wallet_type?: string;
 }
 
-// Classified outcome of POST /account/payouts/initiate.
 export type CreateOutcome =
   | { kind: 'created'; payout: GatewayPayout }
   | { kind: 'duplicate_reference' }

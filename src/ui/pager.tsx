@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { formatCount } from '@/lib/format';
 
 const step = 'flex h-7 items-center gap-1 rounded-md border px-2 text-xs font-semibold bg-surface';
 
@@ -20,7 +21,7 @@ export function Pager({
   return (
     <div className="flex items-center justify-between">
       <span className="text-muted-foreground tabular text-xs">
-        {total.toLocaleString('en-IN')} {noun}
+        {formatCount(total)} {noun}
       </span>
       {pages > 1 && (
         <div className="flex items-center gap-2">

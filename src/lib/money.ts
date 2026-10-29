@@ -1,11 +1,5 @@
-/**
- * Money helpers. Amounts are stored and compared as integer paise (bigint).
- * Floating point is never used for money.
- */
-
 const AMOUNT_RE = /^(0|[1-9]\d*)(\.\d{1,2})?$/;
 
-/** Parse an INR decimal string ("1234.50") into paise. Returns null if malformed. */
 export function parseInrToPaise(input: string): bigint | null {
   const s = input.trim().replace(/,/g, '');
   if (!AMOUNT_RE.test(s)) return null;

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { DateTime } from 'luxon';
 import { CalendarRange, Search, SlidersHorizontal, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { formatCount } from '@/lib/format';
 import { DATE_RANGES, LIST_PARAMS, type ListSpec, type Tone } from '@/lib/list-spec';
 import { Button } from '../primitives/button';
 import { Input } from '../primitives/input';
@@ -42,7 +43,7 @@ function QuickChips({ spec, counts }: { spec: NonNullable<ListSpec['quick']>; co
           >
             {o.tone && <span aria-hidden className={cn('size-1.5 rounded-full', DOT[o.tone])} />}
             {o.label}
-            {n !== undefined && <span className="tabular text-muted-foreground min-w-[2ch] text-right text-xs font-medium">{n.toLocaleString('en-IN')}</span>}
+            {n !== undefined && <span className="tabular text-muted-foreground min-w-[2ch] text-right text-xs font-medium">{formatCount(n)}</span>}
           </button>
         );
       })}
@@ -260,7 +261,6 @@ function FilterPanel({ spec, activeCount }: { spec: ListSpec; activeCount: numbe
   );
 }
 
-// A list's toolbar: quick chips (most used), search-by, the applied filters as removable chips, the panel.
 export function ListFilters({
   spec,
   counts,

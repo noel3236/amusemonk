@@ -8,6 +8,10 @@ export function formatDateTime(d: Date | null | undefined): string {
   return DateTime.fromJSDate(d).setZone(DISPLAY_ZONE).toFormat("d LLL yyyy, HH:mm 'IST'");
 }
 
+export function formatCount(n: number): string {
+  return n.toLocaleString('en-IN');
+}
+
 export function formatRupees(paise: string | bigint | null | undefined): string {
   return paise === null || paise === undefined ? '—' : `₹${formatInr(paise)}`;
 }

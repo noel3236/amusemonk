@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { formatDateTime, formatRupees } from '@/lib/format';
+import { formatCount, formatDateTime, formatRupees } from '@/lib/format';
 import { ArrowRight, Badge, Button, DataTable, cn, type Column } from '@/ui';
 import type { FileListRow } from './lists';
 import { RejectFileButton } from './reject-button';
@@ -107,7 +107,7 @@ export function FilesTable({
       defaultPinned={['file']}
       empty={empty}
       footer={{
-        uploaded: <span className="text-muted-foreground text-xs font-semibold">Total · {total.toLocaleString('en-IN')} files</span>,
+        uploaded: <span className="text-muted-foreground text-xs font-semibold">Total · {formatCount(total)} files</span>,
         total: <span className="tabular">{formatRupees(totalPaise)}</span>,
       }}
     />

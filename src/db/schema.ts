@@ -1,6 +1,5 @@
-import type { ColumnType, Insertable, Selectable, Updateable } from 'kysely';
+import type { ColumnType, Selectable } from 'kysely';
 
-// DB-defaulted columns: optional on insert.
 type Defaulted<T> = ColumnType<T, T | undefined, T>;
 type Stamp = ColumnType<Date, Date | undefined, Date>;
 type NullableStamp = ColumnType<Date | null, Date | null | undefined, Date | null>;
@@ -229,8 +228,4 @@ export interface Database {
 
 export type User = Selectable<UsersTable>;
 export type UploadRule = Selectable<UploadRulesTable>;
-export type PayoutFile = Selectable<PayoutFilesTable>;
-export type NewPayoutFile = Insertable<PayoutFilesTable>;
 export type Payout = Selectable<PayoutsTable>;
-export type NewPayout = Insertable<PayoutsTable>;
-export type PayoutUpdate = Updateable<PayoutsTable>;

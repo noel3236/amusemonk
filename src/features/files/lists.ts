@@ -150,7 +150,6 @@ export async function listFiles(scope: { userId?: string }, q: ListQuery, pageSi
 
 export type FileListRow = Awaited<ReturnType<typeof listFiles>>['rows'][number];
 
-// Every row of one file in file order, for the status CSV.
 export async function filePayoutsForExport(fileId: string) {
   return db()
     .selectFrom('payouts as p')

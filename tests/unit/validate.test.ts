@@ -15,7 +15,6 @@ const all: Ruleset = {
   balanceCheck: true,
   custom: [],
 };
-// Only the locked rules: every switchable one off.
 const lockedOnly: Ruleset = { duplicateFilename: false, duplicateFile: false, duplicateContent: false, balanceCheck: false, custom: [] };
 
 let n = 0;

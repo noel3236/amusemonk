@@ -35,7 +35,6 @@ export function DataTable<T>({
   rows: T[];
   rowKey: (row: T) => string;
   defaultPinned?: readonly string[];
-  // A totals row: content per column key.
   footer?: Partial<Record<string, React.ReactNode>>;
   maxHeight?: string;
   empty?: React.ReactNode;
