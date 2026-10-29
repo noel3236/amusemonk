@@ -1,0 +1,42 @@
+# Every outbound call (gatekeeper, UAPI) leaves through this tunnel. The app reaches it as an
+# HTTP proxy on :8888 (EGRESS_PROXY_URL); lib/egress.ts refuses to call out without it.
+services:
+  vpn:
+    image: qmcgaw/gluetun:v3.40.0
+    cap_add: [NET_ADMIN]
+    devices: [/dev/net/tun:/dev/net/tun]
+    env_file: ${VPN_ENV_FILE:-./credentials/darwin.env}
+    environment:
+      VPN_SERVICE_PROVIDER: protonvpn
+      VPN_TYPE: openvpn
+      OPENVPN_PROTOCOL: tcp
+      SERVER_COUNTRIES: India,Singapore
+      HTTPPROXY: 'on'
+      HTTPPROXY_LISTENING_ADDRESS: ':8888'
+      HEALTH_TARGET_ADDRESSES: 1.1.1.1:443
+      HEALTH_VPN_DURATION_INITIAL: 30s
+    ports:
+      - 127.0.0.1:8888:8888
+    restart: unless-stopped
+
+  # Local development and tests only (`docker compose --profile dev up -d db`). Production uses RDS.
+  db:
+    image: mysql:8.4
+    profiles: [dev]
+    environment:
+      MYSQL_DATABASE: amusemonk
+      MYSQL_USER: amusemonk
+      MYSQL_PASSWORD: amusemonk-dev
+      MYSQL_ROOT_PASSWORD: amusemonk-root-dev
+    ports:
+      - 127.0.0.1:3306:3306
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-uroot', '-pamusemonk-root-dev']
+      interval: 3s
+      retries: 40
+    restart: unless-stopped
+
+volumes:
+  db-data:
