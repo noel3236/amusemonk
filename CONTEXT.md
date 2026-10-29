@@ -293,7 +293,8 @@ the repo. **Changing or losing `SECRETS_KEY` makes every stored UAPI secret unre
 | D-34 | 2026-10-29 | Users paste their own API key + secret (generated on the main platform); the app verifies it, never creates keys | User decision. Supersedes the OTP key creation of D-17/D-23. Admin panel lists only amusemonk users' keys. |
 | D-35 | 2026-10-29 | Prod runs the app as `amusemonk_app` (SELECT, INSERT, UPDATE only); `amusemonk_admin` only runs migrations, and its URL is kept out of the containers' `.env` | The app never deletes rows (soft deletes only), so a compromised or buggy web process can't drop data or change the schema. |
 | D-36 | 2026-10-29 | Deploys go through SSM Run Command; the box has no SSH port. Images are tagged by commit and the deploy fails unless the running containers carry that commit's label | No inbound admin surface; "what is live" is always one exact commit. |
-| D-37 | 2026-10-29 | Production region is `eu-west-2` (London) | User decision. A first build in `ap-south-1` was never asked for and was torn down. |
+| D-37 | 2026-10-29 | Production region is `eu-west-2` (London) | User decision. A first build in `ap-south-1` was never asked for; it was torn down the same day. |
+| D-38 | 2026-10-29 | `sandbox` and `prod` run side by side on the same box and RDS instance, each with its own gateway, database + DB user, bucket, secrets and hostname; prod only takes images that went to sandbox first | User: test on sandbox and run prod with no data mix-up, without buying more. MySQL grants enforce the database split; separate secrets make sessions and stored keys non-transferable. |
 | D-12 | 2026-10-28 | ~~Real Postgres + `mock-gateway/`~~ Integration tests run against a real MySQL (`TEST_DATABASE_URL`) and an in-process fake gateway (`tests/helpers/fake-gateway.ts`) that implements the sandbox rules | The suite exercises the real SQL (locks, unique keys, CHECKs) without touching the sandbox. |
 
 ## 11. Open questions for the product owner
@@ -344,26 +345,39 @@ pnpm verify                             # typecheck + lint + tests
 ```
 `amusemonk_test` (same container) is `TEST_DATABASE_URL`; the test runner migrates it before running.
 
-## 14. Production (AWS `eu-west-2`, London — D-37)
+## 14. Production (AWS `eu-west-2`, London — D-37): two environments on one box (D-38)
 
-| Piece | What |
+| | **sandbox** | **prod** |
+|---|---|---|
+| URL | `sandbox.amusemonk.com` (noindex) | `amusemonk.com` (`www` → apex) |
+| Gateway + login | `sandbox.celestiapayment.com` | production gateway, **not set yet**: prod stays off until `/amusemonk/prod/GATEWAY_BASE_URL` exists |
+| Database | `amusemonk_sandbox`, user `amusemonk_sandbox_app` | `amusemonk`, user `amusemonk_app` |
+| Files | S3 `amusemonk-sandbox-files-<account>-eu-west-2` | S3 `amusemonk-files-<account>-eu-west-2` (also holds `deploy/` bundles) |
+| Config | SSM `/amusemonk/sandbox/*` → `sandbox.env` | SSM `/amusemonk/prod/*` → `prod.env` |
+| Containers | `sandbox-web`, `sandbox-worker` | `prod-web`, `prod-worker` |
+
+Each environment has its own `AUTH_SECRET` and `SECRETS_KEY`, so a session or a stored key from one is useless in the
+other. Each app user is granted SELECT/INSERT/UPDATE on its own database only (checked: the sandbox user reading
+`amusemonk.users` gets `ER_TABLEACCESS_DENIED_ERROR`). Both containers share the box's instance role, so bucket
+separation is by configuration, not IAM.
+
+| Shared | What |
 |---|---|
 | Box | EC2 `t4g.small` (AL2023 arm64, 2 GB swap), tag `Name=amusemonk`, Elastic IP. **No SSH port**: shell via SSM Session Manager. IMDSv2 with hop limit 2 so containers get the instance role |
-| Stack | `/opt/amusemonk/compose.prod.yml`: `vpn` (gluetun → Proton, India/Singapore exits), `web`, `worker`, `caddy` (Let's Encrypt for amusemonk.com; www → apex) |
-| DB | RDS MySQL 8.4 `amusemonk` (db.t4g.micro, private, encrypted, TLS required by param group `amusemonk-mysql84`, 7-day backups, deletion protection). Users per D-35 |
-| Files | S3 `amusemonk-files-<account>-eu-west-2` (name in SSM `S3_BUCKET`): `uploads/` (versioned; old versions kept 90 days), `deploy/` (bundles, 30 days). TLS-only bucket policy, SSE-S3 |
+| Stack | `/opt/amusemonk/compose.prod.yml`: `vpn` (gluetun → Proton, India/Singapore exits), the four app services behind compose profiles (an environment is on once it has a line in `revisions`), `caddy` (Let's Encrypt; config dir `caddy/`, reloaded on every deploy) |
+| RDS | MySQL 8.4 `amusemonk` (db.t4g.micro, private, encrypted, TLS required by param group `amusemonk-mysql84`, 7-day backups, deletion protection). `amusemonk_admin` runs migrations only (D-35) |
 | Images | ECR `amusemonk-web`, `amusemonk-worker`, tagged by commit; last 15 kept |
-| Config | SSM `/amusemonk/prod/*` becomes `.env` on every deploy; `/amusemonk/admin/MIGRATE_DATABASE_URL` is read only by the deploy script. Generated secrets are backed up in the owner's private vault |
+| Config | `/amusemonk/shared/*` (VPN login) → `.env`; `/amusemonk/admin/<env>/MIGRATE_DATABASE_URL` is read only by the deploy script. Generated secrets are backed up in the owner's private vault |
 | Network | SG `amusemonk-web`: 80/tcp, 443/tcp+udp in. SG `amusemonk-db`: 3306 from `amusemonk-web` only. Gatekeeper and UAPI calls leave via the VPN; S3 and RDS are direct (D-28) |
 
 ```
-scripts/deploy.sh            # AWS creds in env. Build arm64 images for HEAD → ECR, upload deploy/ → S3, then on the box
-                             # (SSM): .env from Parameter Store, pull, migrate, up -d, check the live commit label
-ALLOW_DIRTY=1 scripts/deploy.sh   # ships <sha>-dirty; only to verify before committing
-aws ssm start-session --target <instance-id>   # then: cd /opt/amusemonk && docker compose -f compose.prod.yml logs -f web worker
+scripts/deploy.sh sandbox    # AWS creds in env. Build arm64 images for HEAD → ECR, upload deploy/ → S3, then on the box
+                             # (SSM): sandbox.env from Parameter Store, pull, migrate, up, check the live commit label
+scripts/deploy.sh prod       # same commit, no build: refuses unless its images are already in ECR (it went to sandbox)
+ALLOW_DIRTY=1 scripts/deploy.sh sandbox   # ships <sha>-dirty; sandbox only, to verify before committing
+aws ssm start-session --target <instance-id>   # then: cd /opt/amusemonk && docker compose -f compose.prod.yml logs -f sandbox-web
 ```
 `vpn` unhealthy with `read UDPv4 [ECONNREFUSED]` in its log = gluetun's built-in Proton server list has gone stale:
 bump the pinned gluetun image (v3.40.0 failed this way on 2026-10-29; v3.41.3 connects).
-Rollback = run `box-deploy.sh <older-sha>` on the box. Migrations are forward-only, so roll back code only across
+Rollback = run `box-deploy.sh <env> <older-sha>` on the box. Migrations are forward-only, so roll back code only across
 releases that didn't add one.
-

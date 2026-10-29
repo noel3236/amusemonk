@@ -1,6 +1,5 @@
-amusemonk.com {
+(common) {
 	encode zstd gzip
-	reverse_proxy web:3400
 	header {
 		Strict-Transport-Security "max-age=31536000"
 		X-Content-Type-Options nosniff
@@ -8,6 +7,17 @@ amusemonk.com {
 		Referrer-Policy strict-origin-when-cross-origin
 		-Server
 	}
+}
+
+amusemonk.com {
+	import common
+	reverse_proxy prod-web:3400
+}
+
+sandbox.amusemonk.com {
+	import common
+	header X-Robots-Tag "noindex, nofollow"
+	reverse_proxy sandbox-web:3400
 }
 
 www.amusemonk.com {

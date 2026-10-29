@@ -1,8 +1,19 @@
-# Production stack on the EC2 box. Images come from ECR by commit SHA; the box never builds.
+# The production box: prod and sandbox side by side, sharing only the VPN exit and the TLS proxy. Each environment
+# has its own images, env file (gateway, database, bucket, secrets) and is switched on once it has been deployed.
 # Gateway calls (gatekeeper, UAPI) leave only through the VPN proxy; RDS and S3 are reached directly.
 x-logging: &logging
   driver: json-file
   options: { max-size: 10m, max-file: '5' }
+
+x-app: &app
+  environment: { EGRESS_PROXY_URL: 'http://vpn:8888' }
+  depends_on: [vpn]
+  restart: unless-stopped
+  logging: *logging
+
+x-worker: &worker
+  <<: *app
+  stop_grace_period: 30s
 
 services:
   vpn:
@@ -24,34 +35,37 @@ services:
     restart: unless-stopped
     logging: *logging
 
-  web:
-    image: ${REGISTRY}/amusemonk-web:${REVISION}
-    env_file: .env
-    environment:
-      EGRESS_PROXY_URL: http://vpn:8888
-    depends_on: [vpn]
-    restart: unless-stopped
-    logging: *logging
+  prod-web:
+    <<: *app
+    profiles: [prod]
+    image: ${REGISTRY}/amusemonk-web:${PROD_REVISION:-none}
+    env_file: [{ path: prod.env, required: false }]
 
-  worker:
-    image: ${REGISTRY}/amusemonk-worker:${REVISION}
-    env_file: .env
-    environment:
-      EGRESS_PROXY_URL: http://vpn:8888
-      WORKER_ID: worker-1
-    depends_on: [vpn]
-    stop_grace_period: 30s
-    restart: unless-stopped
-    logging: *logging
+  prod-worker:
+    <<: *worker
+    profiles: [prod]
+    image: ${REGISTRY}/amusemonk-worker:${PROD_REVISION:-none}
+    env_file: [{ path: prod.env, required: false }]
+
+  sandbox-web:
+    <<: *app
+    profiles: [sandbox]
+    image: ${REGISTRY}/amusemonk-web:${SANDBOX_REVISION:-none}
+    env_file: [{ path: sandbox.env, required: false }]
+
+  sandbox-worker:
+    <<: *worker
+    profiles: [sandbox]
+    image: ${REGISTRY}/amusemonk-worker:${SANDBOX_REVISION:-none}
+    env_file: [{ path: sandbox.env, required: false }]
 
   caddy:
     image: caddy:2.8-alpine
     ports: ['80:80', '443:443', '443:443/udp']
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy:/etc/caddy:ro
       - caddy_data:/data
       - caddy_config:/config
-    depends_on: [web]
     restart: unless-stopped
     logging: *logging
 
