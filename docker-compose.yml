@@ -39,7 +39,6 @@ services:
       - 127.0.0.1:8888:8888
     restart: unless-stopped
 
-  # Production uses RDS.
   db:
     image: mysql:8.4
     profiles: [dev, app]

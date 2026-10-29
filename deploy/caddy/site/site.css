@@ -233,7 +233,6 @@ main:focus {
   stroke-linejoin: round;
 }
 
-/* ---------- logo ---------- */
 
 .wordmark {
   display: inline-flex;
@@ -282,7 +281,6 @@ main:focus {
   height: 1.625rem;
 }
 
-/* ---------- buttons ---------- */
 
 .btn {
   display: inline-flex;
@@ -368,7 +366,6 @@ main:focus {
   color: var(--foreground);
 }
 
-/* ---------- chips ---------- */
 
 .chip {
   display: inline-flex;
@@ -410,7 +407,6 @@ main:focus {
   color: var(--muted-foreground);
 }
 
-/* ---------- header + hero (the panel band) ---------- */
 
 /* One glow across both bands: the header (exactly 4.5rem tall) shows its top, the hero the rest. */
 .header-band,
@@ -668,7 +664,6 @@ main:focus {
   }
 }
 
-/* ---------- sections ---------- */
 
 .section {
   padding-block: 5.5rem;
@@ -807,7 +802,6 @@ main:focus {
   color: var(--foreground);
 }
 
-/* ---------- demo dialog ---------- */
 
 .demo {
   width: min(58rem, calc(100vw - 2rem));
@@ -962,7 +956,6 @@ main:focus {
   font-size: var(--t-sm);
 }
 
-/* choose */
 .pick-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -1069,7 +1062,6 @@ main:focus {
   cursor: pointer;
 }
 
-/* checks */
 .check-list {
   margin: 1.25rem 0 0;
   padding: 0;
@@ -1197,7 +1189,6 @@ main:focus {
   color: var(--muted-foreground);
 }
 
-/* review + track tables */
 .table-wrap {
   margin-top: 1.25rem;
   overflow-x: auto;
@@ -1293,7 +1284,6 @@ main:focus {
   color: var(--foreground);
 }
 
-/* ---------- responsive ---------- */
 
 @media (max-width: 64rem) {
   .steps-grid {

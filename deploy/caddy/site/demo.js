@@ -61,7 +61,6 @@
     { key: "date", name: "Date window", desc: `Each date is today or within the last ${WINDOW_DAYS} days.` },
   ];
 
-  // ---------- parsing and checks ----------
 
   function parseCsv(text) {
     const rows = [];
@@ -165,7 +164,6 @@
     return { problems, payouts, skipped: false };
   }
 
-  // ---------- DOM helpers ----------
 
   const SVG = "http://www.w3.org/2000/svg";
 
@@ -234,7 +232,6 @@
   const chip = (tone, text) => h("span", { class: `chip tone-${tone}` }, text);
   const totalOf = (payouts) => payouts.reduce((sum, p) => sum + p.cents, 0);
 
-  // ---------- the dialog ----------
 
   const dialog = document.getElementById("demo");
   const body = document.getElementById("demo-body");
@@ -331,7 +328,6 @@
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  // ---------- step 1: choose ----------
 
   function renderChoose() {
     const input = h("input", { type: "file", accept: ".csv,text/csv", hidden: true, onchange: (e) => readOwnFile(e.target.files[0]) });
@@ -373,7 +369,6 @@
     put(foot, h("button", { type: "button", class: "link-btn", onclick: downloadSample }, icon("i-download"), "Download the sample CSV"));
   }
 
-  // ---------- step 2: checks ----------
 
   function renderCheck() {
     const { problems, payouts, skipped } = state.result;
@@ -445,7 +440,6 @@
     }, 160 * (CHECKS.length + 1));
   }
 
-  // ---------- step 3: review ----------
 
   function renderReview() {
     const payouts = state.result.payouts;
@@ -471,7 +465,6 @@
     );
   }
 
-  // ---------- step 4: track ----------
 
   const STATUS = {
     pending: ["muted", "Pending"],
