@@ -7,14 +7,23 @@ import { isDuplicateKey } from '@/db';
 import { createUapiClient } from '@/gateway/client';
 import { GatewayHttpError, GatewayNetworkError } from '@/gateway/types';
 import { recordBalance } from '@/features/balance/server';
-import { revokeKey, storeNewKey } from './server';
+import { createGatewayKey, deleteGatewayKey } from '@/features/profile/server';
+import { activeKeySummary, revokeKey, storeNewKey } from './server';
 
 export type SaveKeyState = { error?: string; done?: boolean };
 
 const KID_RE = /^[A-Za-z0-9]{8,64}$/;
+const CODE_RE = /^\d{6}$/;
 
-// Users generate their key on the gateway platform and paste it here (D-34). Nothing is stored until a signed
-// balance call proves the key and secret work from this server.
+function revalidateKeyPages() {
+  revalidatePath('/dashboard');
+  revalidatePath('/files');
+  revalidatePath('/profile');
+}
+
+
+// A key the user made elsewhere (D-34). Nothing is stored until a signed balance call proves the key and secret work
+// from this server.
 export async function saveApiKeyAction(_prev: SaveKeyState, formData: FormData): Promise<SaveKeyState> {
   const session = await auth();
   if (!session?.user) return { error: 'Your session has expired. Sign in again.' };
@@ -41,14 +50,56 @@ export async function saveApiKeyAction(_prev: SaveKeyState, formData: FormData):
   }
 
   try {
-    await storeNewKey({ userId: session.user.id, kid, secret, scope: null });
+    await storeNewKey({ userId: session.user.id, kid, secret, scope: null, origin: 'pasted' });
   } catch (e) {
     if (isDuplicateKey(e)) return { error: 'This key is already connected to another amusemonk account.' };
     throw e;
   }
   await recordBalance(session.user.id, balance);
-  revalidatePath('/dashboard');
-  revalidatePath('/files');
+  revalidateKeyPages();
+  return { done: true };
+}
+
+// D-40: created on the user's gateway account and connected at once; the secret never leaves the server.
+export async function generateKeyAction(_prev: SaveKeyState, formData: FormData): Promise<SaveKeyState> {
+  const session = await auth();
+  if (!session?.user) return { error: 'Your session has expired. Sign in again.' };
+  const code = String(formData.get('code') ?? '').trim();
+  if (!CODE_RE.test(code)) return { error: 'Enter the 6-digit code from your authenticator app.' };
+  if (await activeKeySummary(session.user.id)) return { error: 'A key is already connected. Revoke it first.' };
+
+  const created = await createGatewayKey(code);
+  if (!created.ok) return { error: created.error };
+  const { kid, secret } = created.value;
+  try {
+    await storeNewKey({ userId: session.user.id, kid, secret, scope: 'uapi', origin: 'generated' });
+  } catch (e) {
+    console.error(`[keys] generated ${kid} on the gateway but couldn't store it:`, e);
+    return { error: `Key ${kid} was created on the gateway but couldn’t be connected. Delete it in the gateway portal and try again.` };
+  }
+  try {
+    await recordBalance(session.user.id, await createUapiClient({ kid, secret }).balance());
+  } catch (e) {
+    console.warn(`[keys] first balance read with ${kid} failed:`, e instanceof Error ? e.message : e);
+  }
+  revalidateKeyPages();
+  return { done: true };
+}
+
+// A generated key is deleted on the gateway too; a pasted one may serve other integrations, so it's only disconnected.
+export async function revokeOwnKeyAction(_prev: SaveKeyState, formData: FormData): Promise<SaveKeyState> {
+  const session = await auth();
+  if (!session?.user) return { error: 'Your session has expired. Sign in again.' };
+  const key = await activeKeySummary(session.user.id);
+  if (!key) return { error: 'No key is connected.' };
+  if (key.origin === 'generated') {
+    const code = String(formData.get('code') ?? '').trim();
+    if (code && !CODE_RE.test(code)) return { error: 'Enter the 6-digit code from your authenticator app.' };
+    const r = await deleteGatewayKey(key.kid, code || undefined);
+    if (!r.ok) return { error: r.error };
+  }
+  await revokeKey(key.id);
+  revalidateKeyPages();
   return { done: true };
 }
 

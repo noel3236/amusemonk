@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Gauge, Files, ScrollText, ShieldCheck, LogOut, UserRound } from 'lucide-react';
+import { Gauge, Files, ScrollText, ShieldCheck, LogOut, UserRound, UserRoundCog } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { Wordmark } from '../logo';
 import { ThemeToggle } from '../theme-toggle';
@@ -20,6 +20,7 @@ const NAV = [
   { href: '/dashboard', label: 'Overview', icon: Gauge },
   { href: '/files', label: 'Files', icon: Files },
   { href: '/payouts', label: 'Payouts', icon: ScrollText },
+  { href: '/profile', label: 'Profile', icon: UserRoundCog },
 ];
 
 const ADMIN_NAV = { href: '/admin', label: 'Admin', icon: ShieldCheck };

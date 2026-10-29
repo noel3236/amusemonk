@@ -202,12 +202,13 @@ Recomputed by the worker after every payout change; also available live via aggr
 | Route | Who | Purpose |
 |---|---|---|
 | `/login` | anyone | gatekeeper email + password (+ OTP) |
-| `/dashboard` | user | balance (+ API key, Replace), waiting / in progress / paid today, files needing confirmation, recent files. No key yet ⇒ connect-key onboarding |
+| `/dashboard` | user | balance (+ API key, Manage → `/profile`), waiting / in progress / paid today, files needing confirmation, recent files. No key yet ⇒ connect-key onboarding (generate, or paste) |
 | `/files` | user | upload (sample CSV), **Files** view (Review & Confirm) and **Rejected uploads** view (error report) |
 | `/files/[id]` | owner | rows, filters, tiles; **Confirm Payment** / **Cancel File** while waiting; per-payout fetch status; auto-refresh while paying |
 | `/files/[id]/status.csv` · `/original` | owner, super admin | original columns + status, UTR, gateway payout ID, codes, attempts, last update (IST) · the uploaded bytes |
 | `/uploads/[id]/errors.csv` | owner, super admin | a rejected upload's problems (row, column, rule, code, problem) |
 | `/payouts` | user | every payout: search (reference, account, name, UTR, gateway ID), status filter, 50 per page |
+| `/profile` | user | payout API key (generate with a 2FA code, or paste; revoke), two-factor authentication on/off, password change, gateway account (D-40) |
 | `/admin/files` (+ `/[id]` read-only) | super admin | all users' files, status filter, **Reject** before confirmation |
 | `/admin/users` | super admin | amusemonk users: API key, Revoke, per-user Limits |
 | `/admin/rules` | super admin | always-on, configurable and custom upload rules |
@@ -296,6 +297,7 @@ the repo. **Changing or losing `SECRETS_KEY` makes every stored UAPI secret unre
 | D-37 | 2026-10-29 | Production region is `eu-west-2` (London) | User decision. A first build in `ap-south-1` was never asked for; it was torn down the same day. |
 | D-38 | 2026-10-29 | `sandbox` and `prod` run side by side on the same box and RDS instance, each with its own gateway, database + DB user, bucket, secrets and hostname; prod only takes images that went to sandbox first | User: test on sandbox and run prod with no data mix-up, without buying more. MySQL grants enforce the database split; separate secrets make sessions and stored keys non-transferable. |
 | D-39 | 2026-10-30 | Two prods instead of one: `fintech` (fintech.amusemonk.com) and `galaxy` (galaxy.amusemonk.com), each isolated like D-38; the bare domain serves nothing | User decision. The first single `prod` (database `amusemonk`, user `amusemonk_app`, `/amusemonk/prod/*`) was never used and is idle pending deletion. |
+| D-40 | 2026-10-30 | A **Profile** tab, cekko-style: users generate their payout key in amusemonk (needs 2FA; created `scope: uapi`, `whitelisted_ips: ["*"]`, connected at once, secret never shown), turn 2FA on/off and change their gateway password. Pasting a key (D-34) stays as the secondary path. Revoking a generated key deletes it on the gateway; a pasted one is only disconnected (`user_api_keys.origin`) | User decision. Only amusemonk's own key is managed: other gateway keys may run the user's other integrations. A TOTP code is single-use, so replacing a key is revoke, then generate. |
 | D-12 | 2026-10-28 | ~~Real Postgres + `mock-gateway/`~~ Integration tests run against a real MySQL (`TEST_DATABASE_URL`) and an in-process fake gateway (`tests/helpers/fake-gateway.ts`) that implements the sandbox rules | The suite exercises the real SQL (locks, unique keys, CHECKs) without touching the sandbox. |
 
 ## 11. Open questions for the product owner

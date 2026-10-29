@@ -243,7 +243,7 @@ describe('keys and circuit breaker', () => {
     expect(p.status).toBe('PENDING');
     expect(p.attempt_count).toBe(0);
     expect(p.next_poll_at.getTime()).toBeGreaterThan(Date.now() + 60_000);
-    await storeNewKey({ userId: C.id, kid: `kidC2${run}`, secret: 'secret-0000000000', scope: null });
+    await storeNewKey({ userId: C.id, kid: `kidC2${run}`, secret: 'secret-0000000000', scope: null, origin: 'pasted' });
     await due(f.fileId);
     await dispatchOnce(W1, 50);
     expect(await statuses(f.fileId)).toBe('PROCESSING');

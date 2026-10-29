@@ -76,6 +76,37 @@ export async function gatekeeperLogin(input: {
   };
 }
 
+export type GatekeeperReply = { ok: true; json: unknown } | { ok: false; status: number; codes: string[] };
+
+// Calls gatekeeper as the signed-in user. `status: 0` means it couldn't be reached.
+export async function gatekeeperCall(
+  creds: { gkCookie: string; csrf: string },
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
+  path: string,
+  body?: Record<string, unknown>
+): Promise<GatekeeperReply> {
+  let res: Awaited<ReturnType<typeof outboundFetch>>;
+  try {
+    res = await outboundFetch(gatewayConfig().GATEWAY_BASE_URL + SERVICES.gatekeeper + path, {
+      method,
+      headers: {
+        Cookie: creds.gkCookie,
+        'X-CSRF-Token': creds.csrf,
+        Accept: 'application/json',
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch (e) {
+    console.error(`[auth] gatekeeper ${method} ${path} unreachable:`, e instanceof Error ? e.message : e);
+    return { ok: false, status: 0, codes: [] };
+  }
+  const text = await res.text();
+  const json = text ? safeJson(text) : null;
+  return res.ok ? { ok: true, json } : { ok: false, status: res.status, codes: extractCodes(json) };
+}
+
 // Best effort: the local session is cleared regardless of what gatekeeper answers.
 export async function gatekeeperLogout(gkCookie: string, csrf: string): Promise<void> {
   try {

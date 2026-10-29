@@ -105,7 +105,7 @@ describe('schema guarantees', () => {
 describe('API key storage', () => {
   it('stores secrets encrypted, one active key per user, replaceable and revocable', async () => {
     const u = await makeUser('KEY', { key: false });
-    await storeNewKey({ userId: u.id, kid: `kidA${run}`, secret: 'secretA-0000000000', scope: null });
+    await storeNewKey({ userId: u.id, kid: `kidA${run}`, secret: 'secretA-0000000000', scope: null, origin: 'pasted' });
     expect(await activeCredentials(u.id)).toMatchObject({ kid: `kidA${run}`, secret: 'secretA-0000000000' });
     const row = await db().selectFrom('user_api_keys').select('secret_enc').where('kid', '=', `kidA${run}`).executeTakeFirstOrThrow();
     expect(row.secret_enc).not.toContain('secretA');
@@ -113,7 +113,7 @@ describe('API key storage', () => {
     const second = db().insertInto('user_api_keys').values({ id: randomUUID(), user_id: u.id, kid: `kidX${run}`, secret_enc: 'x' }).execute();
     expect(await code(second)).toBe('ER_DUP_ENTRY');
 
-    await storeNewKey({ userId: u.id, kid: `kidB${run}`, secret: 'secretB-0000000000', scope: null });
+    await storeNewKey({ userId: u.id, kid: `kidB${run}`, secret: 'secretB-0000000000', scope: null, origin: 'pasted' });
     const active = await activeCredentials(u.id);
     expect(active?.kid).toBe(`kidB${run}`);
     expect(await revokeKey(active!.id)).toBe(true);
@@ -121,10 +121,16 @@ describe('API key storage', () => {
     expect(await activeKeySummary(u.id)).toBeUndefined();
   });
 
+  it('remembers whether a key was generated here or pasted', async () => {
+    const u = await makeUser('KO', { key: false });
+    await storeNewKey({ userId: u.id, kid: `kidG${run}`, secret: 'secretG-0000000000', scope: 'uapi', origin: 'generated' });
+    expect(await activeKeySummary(u.id)).toMatchObject({ kid: `kidG${run}`, scope: 'uapi', origin: 'generated' });
+  });
+
   it('a key connected to one account cannot be connected to another', async () => {
     const a = await makeUser('KA', { key: false });
     const b = await makeUser('KB', { key: false });
-    await storeNewKey({ userId: a.id, kid: `kidShared${run}`, secret: 'secret-0000000000', scope: null });
-    expect(await code(storeNewKey({ userId: b.id, kid: `kidShared${run}`, secret: 'secret-0000000000', scope: null }))).toBe('ER_DUP_ENTRY');
+    await storeNewKey({ userId: a.id, kid: `kidShared${run}`, secret: 'secret-0000000000', scope: null, origin: 'pasted' });
+    expect(await code(storeNewKey({ userId: b.id, kid: `kidShared${run}`, secret: 'secret-0000000000', scope: null, origin: 'pasted' }))).toBe('ER_DUP_ENTRY');
   });
 });

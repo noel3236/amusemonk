@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { activeKeySummary } from '@/features/api-keys/server';
-import { ConnectGatewayCard, ReplaceKeyButton } from '@/features/api-keys/connect-card';
+import { ConnectGatewayCard } from '@/features/api-keys/connect-card';
+import { gatewayAccount } from '@/features/profile/server';
 import { lastBalance } from '@/features/balance/server';
 import { dashboardStats, listFilesForUser } from '@/features/files/server';
 import { FILE_STATUS } from '@/features/files/status';
@@ -68,10 +69,11 @@ export default async function DashboardPage() {
 
   const key = await activeKeySummary(userId);
   if (!key) {
+    const account = await gatewayAccount();
     return (
       <div className="flex flex-col gap-5">
         <h1 className="sr-only">Get started</h1>
-        <ConnectGatewayCard />
+        <ConnectGatewayCard twoFactor={account.ok ? account.value.twoFactor : null} />
         <EmptyState
           icon={<Upload />}
           title="Step 2 · Upload a payout file"
@@ -107,7 +109,12 @@ export default async function DashboardPage() {
                 <KeyRound className="size-3" />
                 <span className="text-foreground font-mono">{key.kid}</span>
                 <span aria-hidden>·</span>
-                <ReplaceKeyButton />
+                <Link
+                  href="/profile#api-key"
+                  className="text-primary rounded-sm text-xs font-semibold outline-none hover:underline focus-visible:ring-[3px]"
+                >
+                  Manage
+                </Link>
               </span>
             </>
           }

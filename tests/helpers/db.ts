@@ -26,7 +26,7 @@ export const acct = (a: string) =>
 export async function makeUser(tag: string, opts: { key?: boolean } = { key: true }) {
   const u = await upsertUserOnLogin({ gatekeeperUid: `ID${tag}${run}`, email: `${tag.toLowerCase()}-${run}@example.com`, gatekeeperRole: 'member' });
   const kid = `kid${tag}${run}`;
-  if (opts.key !== false) await storeNewKey({ userId: u.id, kid, secret: `secret-${tag}-0000000000`, scope: null });
+  if (opts.key !== false) await storeNewKey({ userId: u.id, kid, secret: `secret-${tag}-0000000000`, scope: null, origin: 'pasted' });
   return { id: u.id, kid };
 }
 

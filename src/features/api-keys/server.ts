@@ -10,7 +10,7 @@ const aad = (kid: string) => `user_api_keys:${kid}`;
 export async function activeKeySummary(userId: string) {
   return db()
     .selectFrom('user_api_keys')
-    .select(['id', 'kid', 'scope', 'created_at'])
+    .select(['id', 'kid', 'scope', 'origin', 'created_at'])
     .where('user_id', '=', userId)
     .where('status', '=', 'active')
     .executeTakeFirst();
@@ -27,7 +27,13 @@ export async function activeCredentials(userId: string): Promise<(UapiCredential
   return { id: row.id, kid: row.kid, secret: decryptSecret(row.secret_enc, aad(row.kid)) };
 }
 
-export async function storeNewKey(input: { userId: string; kid: string; secret: string; scope: string | null }) {
+export async function storeNewKey(input: {
+  userId: string;
+  kid: string;
+  secret: string;
+  scope: string | null;
+  origin: 'pasted' | 'generated';
+}) {
   const id = randomUUID();
   await db()
     .transaction()
@@ -46,6 +52,7 @@ export async function storeNewKey(input: { userId: string; kid: string; secret: 
           kid: input.kid,
           secret_enc: encryptSecret(input.secret, aad(input.kid)),
           scope: input.scope,
+          origin: input.origin,
         })
         .execute();
     });

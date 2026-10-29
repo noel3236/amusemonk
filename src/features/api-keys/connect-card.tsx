@@ -1,42 +1,40 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
-import { saveApiKeyAction, type SaveKeyState } from './actions';
+import Link from 'next/link';
+import { useActionState, useState } from 'react';
+import { generateKeyAction, saveApiKeyAction, type SaveKeyState } from './actions';
 import {
   Button,
   Card,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-  DialogTrigger,
   ErrorBanner,
   Field,
   Input,
   KeyRound,
   Link2,
+  OtpField,
   PasswordInput,
-  toast,
+  ShieldCheck,
 } from '@/ui';
 
-const STEPS = [
-  'In the gateway portal, open API keys and create a new key',
-  'Allow any IP address (*) — payouts leave from rotating addresses',
-  'Copy the key and its secret here; the secret is shown only once there',
+const FACTS = [
+  'Payouts only: the key can’t act on the rest of your gateway account',
+  'Works from any IP address, since payouts leave from rotating addresses',
+  'Stored encrypted. Nobody, admins included, can read the secret',
 ];
 
-function ApiKeyForm({ submitLabel, onDone }: { submitLabel: string; onDone?: () => void }) {
-  const [state, action, pending] = useActionState<SaveKeyState, FormData>(saveApiKeyAction, {});
+function PasteKeyForm({ onDone }: { onDone?: () => void }) {
   // Controlled, so a failed check doesn't make the user paste the key and secret again.
   const [kid, setKid] = useState('');
   const [secret, setSecret] = useState('');
-  useEffect(() => {
-    if (state.done) onDone?.();
-  }, [state, onDone]);
+  const [state, action, pending] = useActionState<SaveKeyState, FormData>(async (prev, formData) => {
+    const r = await saveApiKeyAction(prev, formData);
+    if (r.done) onDone?.();
+    return r;
+  }, {});
 
   return (
     <form action={action} className="flex flex-col gap-4">
-      <Field label="API key" htmlFor="kid">
+      <Field label="API key" htmlFor="kid" hint="Created in the gateway portal with access from any IP address (*).">
         <Input
           id="kid"
           name="kid"
@@ -48,7 +46,7 @@ function ApiKeyForm({ submitLabel, onDone }: { submitLabel: string; onDone?: () 
           onChange={(e) => setKid(e.target.value)}
         />
       </Field>
-      <Field label="Secret key" htmlFor="secret" hint="Stored encrypted. Nobody, admins included, can see it again.">
+      <Field label="Secret key" htmlFor="secret" hint="The portal shows it only once. We check it with a balance call.">
         <PasswordInput
           id="secret"
           name="secret"
@@ -62,13 +60,74 @@ function ApiKeyForm({ submitLabel, onDone }: { submitLabel: string; onDone?: () 
       {state.error && <ErrorBanner>{state.error}</ErrorBanner>}
       <Button type="submit" disabled={pending} className="w-full">
         <KeyRound />
-        {pending ? 'Checking key…' : submitLabel}
+        {pending ? 'Checking key…' : 'Connect Key'}
       </Button>
     </form>
   );
 }
 
-export function ConnectGatewayCard() {
+function GenerateKeyForm({ onDone }: { onDone?: () => void }) {
+  const [code, setCode] = useState('');
+  const [state, action, pending] = useActionState<SaveKeyState, FormData>(async (prev, formData) => {
+    const r = await generateKeyAction(prev, formData);
+    if (r.done) onDone?.();
+    return r;
+  }, {});
+
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <OtpField value={code} onChange={setCode} />
+      <input type="hidden" name="code" value={code} />
+      {state.error && <ErrorBanner>{state.error}</ErrorBanner>}
+      <Button type="submit" disabled={pending} className="w-full">
+        <KeyRound />
+        {pending ? 'Generating key…' : 'Generate and Connect Key'}
+      </Button>
+    </form>
+  );
+}
+
+function TwoFactorFirst() {
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <span className="bg-warn-soft text-warn flex size-8 items-center justify-center rounded-md">
+        <ShieldCheck className="size-4" />
+      </span>
+      <p className="text-sm">
+        Generating a key needs two-factor authentication on your gateway account. It takes a minute with any
+        authenticator app.
+      </p>
+      <Button asChild variant="outline" size="sm">
+        <Link href="/profile#two-factor">Set Up Two-Factor Authentication</Link>
+      </Button>
+    </div>
+  );
+}
+
+// Generate is the main path; pasting a key made elsewhere is the alternative. One shows at a time.
+export function ConnectKeyPanel({ twoFactor, onDone }: { twoFactor: boolean | null; onDone?: () => void }) {
+  const [mode, setMode] = useState<'generate' | 'paste'>('generate');
+  return (
+    <div className="flex flex-col gap-4">
+      {mode === 'paste' ? (
+        <PasteKeyForm onDone={onDone} />
+      ) : twoFactor === false ? (
+        <TwoFactorFirst />
+      ) : (
+        <GenerateKeyForm onDone={onDone} />
+      )}
+      <button
+        type="button"
+        onClick={() => setMode(mode === 'paste' ? 'generate' : 'paste')}
+        className="text-primary self-center rounded-sm text-xs font-semibold outline-none hover:underline focus-visible:ring-[3px]"
+      >
+        {mode === 'paste' ? 'Generate a key here instead' : 'Have a key already? Paste it instead'}
+      </button>
+    </div>
+  );
+}
+
+export function ConnectGatewayCard({ twoFactor }: { twoFactor: boolean | null }) {
   return (
     <Card className="grid gap-6 p-5 lg:grid-cols-[1fr_22rem]">
       <div className="flex flex-col gap-4">
@@ -77,58 +136,24 @@ export function ConnectGatewayCard() {
         </span>
         <div className="flex flex-col gap-1.5">
           <span className="text-primary text-xs font-bold tracking-[0.14em] uppercase">Step 1</span>
-          <h2 className="text-base font-bold tracking-tight">Connect your gateway API key</h2>
+          <h2 className="text-base font-bold tracking-tight">Connect a gateway API key</h2>
           <p className="text-muted-foreground max-w-lg text-sm">
-            Payouts are sent from your own gateway account, signed with your API key. We check the key with a
-            balance call before saving it.
+            Payouts are sent from your own gateway account and signed with an API key. Generate one here with your
+            authenticator code and it’s connected straight away.
           </p>
         </div>
-        <ol className="text-muted-foreground flex flex-col gap-2 text-sm">
-          {STEPS.map((s, i) => (
-            <li key={s} className="flex items-start gap-2">
-              <span className="bg-sunken text-foreground flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-bold">
-                {i + 1}
-              </span>
-              {s}
+        <ul className="text-muted-foreground flex flex-col gap-2 text-sm">
+          {FACTS.map((f) => (
+            <li key={f} className="flex items-start gap-2">
+              <ShieldCheck className="text-ok mt-0.5 size-4 shrink-0" />
+              {f}
             </li>
           ))}
-        </ol>
+        </ul>
       </div>
       <div className="bg-sunken/60 rounded-lg border p-4">
-        <ApiKeyForm submitLabel="Save API Key" />
+        <ConnectKeyPanel twoFactor={twoFactor} />
       </div>
     </Card>
-  );
-}
-
-export function ReplaceKeyButton() {
-  const [open, setOpen] = useState(false);
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <button
-          type="button"
-          className="text-primary rounded-sm text-xs font-semibold outline-none hover:underline focus-visible:ring-[3px]"
-        >
-          Replace
-        </button>
-      </DialogTrigger>
-      <DialogContent>
-        <div className="flex flex-col gap-1.5">
-          <DialogTitle>Replace your API key</DialogTitle>
-          <DialogDescription>
-            The new key is checked first. Once saved, every payout not yet sent is signed with it; the old key stops
-            being used here.
-          </DialogDescription>
-        </div>
-        <ApiKeyForm
-          submitLabel="Save New Key"
-          onDone={() => {
-            setOpen(false);
-            toast.success('API key replaced');
-          }}
-        />
-      </DialogContent>
-    </Dialog>
   );
 }

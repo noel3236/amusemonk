@@ -60,6 +60,7 @@ export interface UserApiKeysTable {
   kid: string;
   secret_enc: string;
   scope: string | null;
+  origin: Defaulted<'pasted' | 'generated'>;
   status: Defaulted<'active' | 'revoked'>;
   active_user_id: ReadOnly<string | null>;
   created_at: Stamp;
