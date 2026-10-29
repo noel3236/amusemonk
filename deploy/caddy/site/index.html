@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>amusemonk · Bulk payouts from a file, each paid exactly once</title>
+  <meta name="description" content="Upload a payout file. amusemonk checks the whole file, lets you review every row, sends each payout exactly once and tracks it until it settles.">
+  <meta name="theme-color" content="#004557" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#072630" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/site.css">
+  <script src="/demo.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <svg class="sprite" aria-hidden="true">
+    <symbol id="logo" viewBox="0 0 32 32">
+      <rect width="32" height="32" rx="9" class="logo-tile"/>
+      <circle cx="16" cy="10.5" r="3.5" class="logo-dot"/>
+      <path d="M8 24c0-4.8 3.6-8.5 8-8.5s8 3.7 8 8.5" class="logo-arc"/>
+    </symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M14 9l2 2"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+    <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+  </svg>
+
+  <header class="header-band">
+    <div class="container site-header">
+      <a class="wordmark" href="/">
+        <svg class="logo" aria-hidden="true"><use href="#logo"/></svg>
+        <span>amusemonk</span>
+      </a>
+      <nav class="site-nav" aria-label="Sections">
+        <a href="#how">How it works</a>
+        <a href="#safeguards">Safeguards</a>
+      </nav>
+      <button type="button" class="btn btn-brand btn-sm" data-open-demo>Try the demo</button>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <div class="hero-band">
+      <section class="container hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow eyebrow-on-panel">Bulk payouts from a file</p>
+          <h1 id="hero-title">Upload a payout file. <span class="accent">We pay every row once.</span></h1>
+          <p class="lead">Send hundreds of payouts from one spreadsheet. amusemonk checks the whole file before anything moves, lets you review every row, sends each payout exactly once and follows it until it settles.</p>
+          <div class="hero-actions">
+            <button type="button" class="btn btn-brand" data-open-demo>
+              Try the demo
+              <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg>
+            </button>
+            <a class="btn btn-on-panel" href="#how">See how it works</a>
+          </div>
+          <ul class="hero-facts">
+            <li><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Whole-file checks</li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>One payment per reference</li>
+            <li><svg class="icon" aria-hidden="true"><use href="#i-check"/></svg>Live status to settlement</li>
+          </ul>
+        </div>
+
+        <figure class="file-card" aria-label="Example: a payout file part-way through sending">
+          <div class="file-card-head">
+            <span class="file-name">
+              <svg class="icon" aria-hidden="true"><use href="#i-file"/></svg>
+              supplier-payouts.csv
+            </span>
+            <span class="chip tone-ok">Accepted</span>
+          </div>
+          <ul class="file-rows">
+            <li class="file-row">
+              <span class="who"><span class="name">Amara Okafor</span><span class="ref mono">PAY-0411</span></span>
+              <span class="amount num">$1,250.00</span>
+              <span class="chip tone-ok">Paid</span>
+            </li>
+            <li class="file-row">
+              <span class="who"><span class="name">Northwind Supplies</span><span class="ref mono">PAY-0412</span></span>
+              <span class="amount num">$8,400.00</span>
+              <span class="chip tone-ok">Paid</span>
+            </li>
+            <li class="file-row">
+              <span class="who"><span class="name">Lucas Meyer</span><span class="ref mono">PAY-0413</span></span>
+              <span class="amount num">$12,000.00</span>
+              <span class="chip tone-info">Processing</span>
+            </li>
+            <li class="file-row">
+              <span class="who"><span class="name">Sofia Rossi</span><span class="ref mono">PAY-0414</span></span>
+              <span class="amount num">$3,725.50</span>
+              <span class="chip tone-muted">Pending</span>
+            </li>
+          </ul>
+          <div class="file-card-foot">
+            <span class="progress-label">2 of 6 paid</span>
+            <span class="meter" aria-hidden="true"><span class="meter-fill meter-third"></span></span>
+            <span class="total"><span class="total-label">Total</span><span class="num">$48,750.00</span></span>
+          </div>
+        </figure>
+      </section>
+    </div>
+
+  <section id="how" class="section container" aria-labelledby="how-title">
+    <p class="eyebrow">How it works</p>
+    <h2 id="how-title">From spreadsheet to settled in four steps</h2>
+    <p class="section-lead">No integration to build. If you can export a spreadsheet, you can send a batch.</p>
+    <ol class="steps-grid">
+      <li class="card step-card">
+        <span class="step-no" aria-hidden="true">1</span>
+        <h3>Upload the file</h3>
+        <p>CSV or Excel, one row per payout: reference, account, bank code, amount, date and beneficiary.</p>
+      </li>
+      <li class="card step-card">
+        <span class="step-no" aria-hidden="true">2</span>
+        <h3>Every row is checked</h3>
+        <p>Columns, formats, limits, dates and duplicates. If one row fails, the whole file is held back and each problem is listed by row.</p>
+      </li>
+      <li class="card step-card">
+        <span class="step-no" aria-hidden="true">3</span>
+        <h3>Review, then confirm</h3>
+        <p>See every payout and the total before anything is sent. One confirmation sends the batch.</p>
+      </li>
+      <li class="card step-card">
+        <span class="step-no" aria-hidden="true">4</span>
+        <h3>Track until settled</h3>
+        <p>Each payout moves from processing to paid on its own. If the bank returns one, you see why.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section id="safeguards" class="section section-sunken" aria-labelledby="safe-title">
+    <div class="container">
+      <p class="eyebrow">Safeguards</p>
+      <h2 id="safe-title">Built so a payout can't go out twice</h2>
+      <div class="safe-grid">
+        <article class="card safe-card">
+          <span class="safe-icon" aria-hidden="true"><svg class="icon"><use href="#i-layers"/></svg></span>
+          <h3>All or nothing</h3>
+          <p>A file is accepted whole or not at all, so a batch never half-sends. Fix the rows that are listed and upload it again.</p>
+        </article>
+        <article class="card safe-card">
+          <span class="safe-icon" aria-hidden="true"><svg class="icon"><use href="#i-key"/></svg></span>
+          <h3>Exactly once per reference</h3>
+          <p>Every row is keyed by your own reference. The same file uploaded twice, or the same payment under a new reference, is stopped before it's sent.</p>
+        </article>
+        <article class="card safe-card">
+          <span class="safe-icon" aria-hidden="true"><svg class="icon"><use href="#i-sliders"/></svg></span>
+          <h3>Rules you set</h3>
+          <p>Limits per payout and per file, date windows and allowed accounts. Change them without touching the file format.</p>
+        </article>
+        <article class="card safe-card">
+          <span class="safe-icon" aria-hidden="true"><svg class="icon"><use href="#i-pulse"/></svg></span>
+          <h3>Status you can trust</h3>
+          <p>Each payout is followed until it settles. If a response is lost, the payout is looked up, never sent again blind.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section container" aria-labelledby="try-title">
+    <div class="try-band">
+      <div>
+        <p class="eyebrow eyebrow-on-panel">Try it</p>
+        <h2 id="try-title">Watch a file go from upload to paid</h2>
+        <p>Pick a sample file, or drop in your own CSV. The demo runs in your browser with made-up data: nothing is uploaded or sent.</p>
+      </div>
+      <button type="button" class="btn btn-brand" data-open-demo>
+        Try the demo
+        <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg>
+      </button>
+    </div>
+  </section>
+  </main>
+
+  <footer class="container site-footer">
+    <span class="wordmark wordmark-sm">
+      <svg class="logo" aria-hidden="true"><use href="#logo"/></svg>
+      <span>amusemonk</span>
+    </span>
+    <span>© 2026 amusemonk</span>
+  </footer>
+
+  <dialog id="demo" class="demo" aria-labelledby="demo-title">
+    <header class="demo-head">
+      <div class="demo-title">
+        <p class="eyebrow">Demo · sample data</p>
+        <h2 id="demo-title">Pay a file</h2>
+      </div>
+      <ol class="demo-steps" aria-label="Demo progress">
+        <li data-step="choose"><span class="dot" aria-hidden="true"></span>Choose file</li>
+        <li data-step="check"><span class="dot" aria-hidden="true"></span>Checks</li>
+        <li data-step="review"><span class="dot" aria-hidden="true"></span>Review</li>
+        <li data-step="track"><span class="dot" aria-hidden="true"></span>Track</li>
+      </ol>
+      <button type="button" class="icon-btn" data-close-demo aria-label="Close demo">
+        <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+      </button>
+    </header>
+    <div class="demo-body" id="demo-body"></div>
+    <footer class="demo-foot" id="demo-foot"></footer>
+    <p class="sr-only" id="demo-live" aria-live="polite"></p>
+  </dialog>
+</body>
+</html>
