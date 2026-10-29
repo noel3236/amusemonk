@@ -3,9 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/auth';
 import { isSuperAdmin } from '@/auth/roles';
-import { isDuplicateKey } from '@/db';
+import { userExists } from '@/db/users';
 import { createUapiClient } from '@/gateway/client';
-import { GatewayHttpError, GatewayNetworkError } from '@/gateway/types';
 import { recordBalance } from '@/features/balance/server';
 import { createGatewayKey, deleteGatewayKey } from '@/features/profile/server';
 import { activeKeySummary, revokeKey, storeNewKey } from './server';
@@ -21,45 +20,6 @@ function revalidateKeyPages() {
   revalidatePath('/profile');
 }
 
-
-// A key the user made elsewhere (D-34). Nothing is stored until a signed balance call proves the key and secret work
-// from this server.
-export async function saveApiKeyAction(_prev: SaveKeyState, formData: FormData): Promise<SaveKeyState> {
-  const session = await auth();
-  if (!session?.user) return { error: 'Your session has expired. Sign in again.' };
-
-  const kid = String(formData.get('kid') ?? '').trim();
-  const secret = String(formData.get('secret') ?? '').trim();
-  if (!KID_RE.test(kid)) return { error: 'Paste the API key exactly as the gateway shows it (letters and digits).' };
-  if (secret.length < 16 || secret.length > 128) return { error: 'Paste the full secret key.' };
-
-  const client = createUapiClient({ kid, secret });
-  let balance;
-  try {
-    balance = await client.balance();
-  } catch (e) {
-    if (e instanceof GatewayHttpError && (e.status === 401 || e.status === 403)) {
-      return {
-        error:
-          'The gateway didn’t accept this key. Check the key and secret, that the key is enabled, and that it allows any IP address (*).',
-      };
-    }
-    if (e instanceof GatewayNetworkError) return { error: 'Couldn’t reach the gateway to check the key. Try again shortly.' };
-    console.error('[keys] verification failed:', e);
-    return { error: 'The gateway gave an unexpected answer while checking the key. Try again shortly.' };
-  }
-
-  try {
-    await storeNewKey({ userId: session.user.id, kid, secret, scope: null, origin: 'pasted' });
-  } catch (e) {
-    if (isDuplicateKey(e)) return { error: 'This key is already connected to another amusemonk account.' };
-    throw e;
-  }
-  await recordBalance(session.user.id, balance);
-  revalidateKeyPages();
-  return { done: true };
-}
-
 // D-40: created on the user's gateway account and connected at once; the secret never leaves the server.
 export async function generateKeyAction(_prev: SaveKeyState, formData: FormData): Promise<SaveKeyState> {
   const session = await auth();
@@ -67,6 +27,7 @@ export async function generateKeyAction(_prev: SaveKeyState, formData: FormData)
   const code = String(formData.get('code') ?? '').trim();
   if (!CODE_RE.test(code)) return { error: 'Enter the 6-digit code from your authenticator app.' };
   if (await activeKeySummary(session.user.id)) return { error: 'A key is already connected. Revoke it first.' };
+  if (!(await userExists(session.user.id))) return { error: 'Your sign-in is out of date. Sign in again, then generate the key.' };
 
   const created = await createGatewayKey(code);
   if (!created.ok) return { error: created.error };
@@ -74,8 +35,12 @@ export async function generateKeyAction(_prev: SaveKeyState, formData: FormData)
   try {
     await storeNewKey({ userId: session.user.id, kid, secret, scope: 'uapi', origin: 'generated' });
   } catch (e) {
-    console.error(`[keys] generated ${kid} on the gateway but couldn't store it:`, e);
-    return { error: `Key ${kid} was created on the gateway but couldn’t be connected. Delete it in the gateway portal and try again.` };
+    // Only the message: the error object carries the SQL, encrypted secret included.
+    console.error(`[keys] generated ${kid} on the gateway but couldn't store it:`, e instanceof Error ? e.message : e);
+    // Not deleted here: atlas wants a fresh 2FA code to delete a key, and the one just used for creating it is spent.
+    return {
+      error: `The new key couldn’t be saved, so key ${kid} is on your gateway account but not connected. Nobody has its secret, so it can’t be used. Try again.`,
+    };
   }
   try {
     await recordBalance(session.user.id, await createUapiClient({ kid, secret }).balance());
@@ -86,12 +51,28 @@ export async function generateKeyAction(_prev: SaveKeyState, formData: FormData)
   return { done: true };
 }
 
-// A generated key is deleted on the gateway too; a pasted one may serve other integrations, so it's only disconnected.
-export async function revokeOwnKeyAction(_prev: SaveKeyState, formData: FormData): Promise<SaveKeyState> {
+// Any key on the user's gateway account except the one in use, which is revoked instead (D-43).
+export async function deleteKeyAction(_prev: SaveKeyState, formData: FormData): Promise<SaveKeyState> {
+  const session = await auth();
+  if (!session?.user) return { error: 'Your session has expired. Sign in again.' };
+  const kid = String(formData.get('kid') ?? '');
+  const code = String(formData.get('code') ?? '').trim();
+  if (!KID_RE.test(kid)) return { error: 'That key id isn’t valid.' };
+  if (code && !CODE_RE.test(code)) return { error: 'Enter the 6-digit code from your authenticator app.' };
+  if ((await activeKeySummary(session.user.id))?.kid === kid) return { error: 'This key is in use. Revoke it first.' };
+  const r = await deleteGatewayKey(kid, code || undefined);
+  if (!r.ok) return { error: r.error };
+  revalidateKeyPages();
+  return { done: true };
+}
+
+// The key in use: a generated one is deleted on the gateway too; a pasted one may serve other integrations, so it's
+// only disconnected.
+export async function revokeKeyInUseAction(_prev: SaveKeyState, formData: FormData): Promise<SaveKeyState> {
   const session = await auth();
   if (!session?.user) return { error: 'Your session has expired. Sign in again.' };
   const key = await activeKeySummary(session.user.id);
-  if (!key) return { error: 'No key is connected.' };
+  if (!key) return { error: 'No key is in use.' };
   if (key.origin === 'generated') {
     const code = String(formData.get('code') ?? '').trim();
     if (code && !CODE_RE.test(code)) return { error: 'Enter the 6-digit code from your authenticator app.' };

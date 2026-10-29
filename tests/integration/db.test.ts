@@ -3,7 +3,7 @@ import { sql } from 'kysely';
 import { describe, expect, it } from 'vitest';
 import { isDuplicateKey } from '@/db';
 import { upsertUserOnLogin } from '@/db/users';
-import { activeCredentials, activeKeySummary, revokeKey, storeNewKey } from '@/features/api-keys/server';
+import { activeCredentials, activeKeySummary, generatedKids, revokeKey, storeNewKey } from '@/features/api-keys/server';
 import { db, makeUser, ruleId, run, requireTestDatabase } from '../helpers/db';
 
 requireTestDatabase();
@@ -125,6 +125,8 @@ describe('API key storage', () => {
     const u = await makeUser('KO', { key: false });
     await storeNewKey({ userId: u.id, kid: `kidG${run}`, secret: 'secretG-0000000000', scope: 'uapi', origin: 'generated' });
     expect(await activeKeySummary(u.id)).toMatchObject({ kid: `kidG${run}`, scope: 'uapi', origin: 'generated' });
+    await storeNewKey({ userId: u.id, kid: `kidP${run}`, secret: 'secretP-0000000000', scope: null, origin: 'pasted' });
+    expect(await generatedKids(u.id)).toEqual([`kidG${run}`]);
   });
 
   it('a key connected to one account cannot be connected to another', async () => {

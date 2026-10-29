@@ -1,6 +1,5 @@
 export {
   ArrowLeft,
-  ArrowUpDown,
   Braces,
   CalendarRange,
   X,
@@ -25,7 +24,6 @@ export {
   FileSpreadsheet,
   Files,
   Gauge,
-  Inbox,
   KeyRound,
   LogOut,
   Menu,

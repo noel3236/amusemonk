@@ -2,17 +2,30 @@
 
 import { useActionState, useState } from 'react';
 import { changePasswordAction, type FormState } from './actions';
-import { Button, Card, ErrorBanner, Field, Lock, PasswordInput, toast } from '@/ui';
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+  DialogTrigger,
+  ErrorBanner,
+  Field,
+  PasswordInput,
+  toast,
+} from '@/ui';
 
 const EMPTY = { current: '', next: '', confirm: '' };
 
-export function PasswordCard() {
+export function PasswordDialog() {
+  const [open, setOpen] = useState(false);
   // Controlled, so a refused change doesn't wipe what was typed.
   const [values, setValues] = useState(EMPTY);
   const set = (k: keyof typeof EMPTY) => (e: React.ChangeEvent<HTMLInputElement>) => setValues({ ...values, [k]: e.target.value });
   const [state, action, pending] = useActionState<FormState, FormData>(async (prev, formData) => {
     const r = await changePasswordAction(prev, formData);
     if (r.done) {
+      setOpen(false);
       setValues(EMPTY);
       toast.success('Password changed. Your other sessions were signed out.');
     }
@@ -20,15 +33,18 @@ export function PasswordCard() {
   }, {});
 
   return (
-    <Card className="flex flex-col gap-4 p-5">
-      <div className="flex items-center gap-3">
-        <span className="bg-primary/10 text-primary flex size-8 items-center justify-center rounded-md">
-          <Lock className="size-4" />
-        </span>
-        <h2 className="text-sm font-bold tracking-tight">Password</h2>
-      </div>
-      <form action={action} className="flex flex-col gap-4">
-        <div className="grid gap-3 sm:grid-cols-3">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          Change Password
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <div className="flex flex-col gap-1.5">
+          <DialogTitle>Change your password</DialogTitle>
+          <DialogDescription>It’s your gateway password, so it changes there too.</DialogDescription>
+        </div>
+        <form action={action} className="flex flex-col gap-4">
           <Field label="Current password" htmlFor="pw-current">
             <PasswordInput id="pw-current" name="current" autoComplete="current-password" value={values.current} onChange={set('current')} />
           </Field>
@@ -38,17 +54,12 @@ export function PasswordCard() {
           <Field label="Repeat new password" htmlFor="pw-confirm">
             <PasswordInput id="pw-confirm" name="confirm" autoComplete="new-password" value={values.confirm} onChange={set('confirm')} />
           </Field>
-        </div>
-        {state.error && <ErrorBanner>{state.error}</ErrorBanner>}
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-muted-foreground text-xs">
-            It’s your gateway password: it changes there too, and your other sessions are signed out.
-          </p>
-          <Button type="submit" size="sm" disabled={pending}>
+          {state.error && <ErrorBanner>{state.error}</ErrorBanner>}
+          <Button type="submit" disabled={pending}>
             {pending ? 'Changing password…' : 'Change Password'}
           </Button>
-        </div>
-      </form>
-    </Card>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

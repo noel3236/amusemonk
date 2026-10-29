@@ -85,6 +85,25 @@ export async function createGatewayKey(code: string): Promise<GatekeeperResult<{
   return { ok: true, value: { kid, secret } };
 }
 
+export type GatewayKey = { kid: string; scope: string; ips: string[]; status: string; createdAt: Date | null };
+
+// Every key on the user's gateway account, newest first (D-40), so stray ones can be found and deleted.
+export async function listGatewayKeys(): Promise<GatekeeperResult<GatewayKey[]>> {
+  const r = await call('GET', '/resource/api_keys?limit=100&ordering=desc');
+  if (!r.ok) return fail(r);
+  const rows = Array.isArray(r.json) ? (r.json as Record<string, unknown>[]) : [];
+  return {
+    ok: true,
+    value: rows.map((k) => ({
+      kid: str(k.kid),
+      scope: str(k.scope),
+      ips: Array.isArray(k.whitelisted_ips) ? k.whitelisted_ips.map(String) : [],
+      status: str(k.status),
+      createdAt: str(k.created_at) ? new Date(str(k.created_at)) : null,
+    })),
+  };
+}
+
 export async function deleteGatewayKey(kid: string, code?: string): Promise<GatekeeperResult> {
   const r = await call('DELETE', `/resource/api_keys/${encodeURIComponent(kid)}`, code ? { otp_code: code } : undefined);
   if (r.ok || r.status === 404) return { ok: true, value: null };

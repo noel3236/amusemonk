@@ -110,7 +110,7 @@ export default async function DashboardPage() {
                 <span className="text-foreground font-mono">{key.kid}</span>
                 <span aria-hidden>·</span>
                 <Link
-                  href="/profile#api-key"
+                  href="/profile#api-keys"
                   className="text-primary rounded-sm text-xs font-semibold outline-none hover:underline focus-visible:ring-[3px]"
                 >
                   Manage

@@ -13,6 +13,7 @@ import { IN_FLIGHT } from '@/worker/status';
 import { normalizeFilename, sha256Hex } from './fingerprint';
 import { parseUpload, ParseError } from './parse';
 import { todayIst, validateParsedFile, type ParsedPayout, type Ruleset } from './validate';
+import { SIMILAR_FILES } from '@/features/files/look-alike';
 
 export type IngestResult =
   | { outcome: 'ACCEPTED'; fileId: string; rowCount: number; totalPaise: string }
@@ -102,7 +103,7 @@ async function crossFileErrors(
   return errors;
 }
 
-// D-44: a warning, not a rejection. The user's other recent files with the same payout count and total.
+// D-44: a warning, not a rejection.
 async function similarFileWarnings(q: Db, userId: string, windowDays: number, rowCount: number, totalPaise: bigint): Promise<UploadWarning[]> {
   const files = await q
     .selectFrom('payout_files')
@@ -119,7 +120,7 @@ async function similarFileWarnings(q: Db, userId: string, windowDays: number, ro
   return [
     {
       rule: 'similar_files',
-      code: 'SIMILAR_FILES',
+      code: SIMILAR_FILES,
       message: `Same number of payouts (${rowCount}) and the same total (${formatRupees(totalPaise)}) as ${files.length === 1 ? 'a file' : `${files.length} files`} you uploaded in the last ${windowDays} days.`,
       files: files.map((f) => ({ id: f.id, name: f.original_filename, uploadedAt: f.created_at.toISOString() })),
     },

@@ -9,6 +9,7 @@ import { productionDeps } from '@/worker/deps';
 import { refreshPayout } from '@/worker/refresh';
 import { canSee, viewer } from './access';
 import { approveFile, cancelFile } from './approval';
+import { lookAlikeIn, NOT_A_REPEAT_REQUIRED } from './look-alike';
 
 type Result = { error?: string };
 
@@ -30,8 +31,8 @@ export async function confirmPaymentAction(fileId: string, notARepeat = false): 
   const session = await auth();
   if (!session?.user) return { error: 'Your session has expired. Sign in again.' };
   const f = await db().selectFrom('payout_files').select('warnings_json').where('id', '=', fileId).where('user_id', '=', session.user.id).executeTakeFirst();
-  if (!notARepeat && f?.warnings_json.some((w) => w.code === 'SIMILAR_FILES')) {
-    return { error: 'This file looks like others of yours. Tick the box to confirm it isn’t a repeat.' };
+  if (!notARepeat && f && lookAlikeIn(f.warnings_json)) {
+    return { error: NOT_A_REPEAT_REQUIRED };
   }
   const r = await approveFile(fileId, session.user.id);
   if (!r.ok) return { error: r.reason };

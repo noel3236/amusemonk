@@ -3,9 +3,7 @@
 import { useActionState, useState } from 'react';
 import { startTwoFactorAction, twoFactorAction, type FormState } from './actions';
 import {
-  Badge,
   Button,
-  Card,
   Copyable,
   Dialog,
   DialogContent,
@@ -14,14 +12,13 @@ import {
   DialogTrigger,
   ErrorBanner,
   OtpField,
-  ShieldCheck,
   Skeleton,
   toast,
 } from '@/ui';
 
 type Setup = { qr: string | null; secret: string };
 
-function TwoFactorDialog({ enable }: { enable: boolean }) {
+export function TwoFactorDialog({ enable }: { enable: boolean }) {
   const [open, setOpen] = useState(false);
   const [setup, setSetup] = useState<Setup | null>(null);
   const [setupError, setSetupError] = useState<string | null>(null);
@@ -48,7 +45,7 @@ function TwoFactorDialog({ enable }: { enable: boolean }) {
     <Dialog open={open} onOpenChange={(next) => void onOpenChange(next)}>
       <DialogTrigger asChild>
         <Button variant={enable ? 'primary' : 'outline'} size="sm">
-          {enable ? 'Turn On Two-Factor Authentication' : 'Turn Off'}
+          {enable ? 'Turn On' : 'Turn Off'}
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -93,29 +90,5 @@ function TwoFactorDialog({ enable }: { enable: boolean }) {
         </form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-export function TwoFactorCard({ enabled }: { enabled: boolean }) {
-  return (
-    <Card id="two-factor" className="flex scroll-mt-20 flex-col gap-4 p-5">
-      <div className="flex items-center gap-3">
-        <span className="bg-primary/10 text-primary flex size-8 items-center justify-center rounded-md">
-          <ShieldCheck className="size-4" />
-        </span>
-        <h2 className="text-sm font-bold tracking-tight">Two-factor authentication</h2>
-        <Badge tone={enabled ? 'ok' : 'warn'} className="ml-auto">
-          {enabled ? 'On' : 'Off'}
-        </Badge>
-      </div>
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-muted-foreground text-sm">
-          {enabled
-            ? 'Sign-ins and API key changes ask for a code from your authenticator app.'
-            : 'Turn it on to protect sign-ins and to generate a payout key here.'}
-        </p>
-        <TwoFactorDialog enable={!enabled} />
-      </div>
-    </Card>
   );
 }

@@ -25,6 +25,7 @@ import { FileDecisionDialog, LookAlikeWarning, type FileReview } from './file-de
 import { pageHref, parseListQuery } from '@/lib/list-params';
 import type { ListSpec } from '@/lib/list-spec';
 import { listPayouts } from './lists';
+import { lookAlikeIn } from './look-alike';
 import { PayoutsTable } from './payouts-table';
 import { fileSummary, type FileRow } from './server';
 import { FILE_PAYOUTS_SPEC } from './specs';
@@ -64,7 +65,7 @@ export async function FileDetail({
   const moving = FILE_IN_FLIGHT.includes(file.status) || (summary.inFlight.n > 0 && !!file.approved_at);
   const finished = ['COMPLETED', 'COMPLETED_WITH_FAILURES', 'FAILED'].includes(file.status);
   const total = formatRupees(file.total_amount_paise);
-  const lookAlike = awaiting ? file.warnings_json.find((w) => w.code === 'SIMILAR_FILES') : undefined;
+  const lookAlike = awaiting ? lookAlikeIn(file.warnings_json) : undefined;
   const review: FileReview = {
     fileId: file.id,
     filename: file.original_filename,

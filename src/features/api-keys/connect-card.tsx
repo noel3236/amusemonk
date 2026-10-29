@@ -2,17 +2,14 @@
 
 import Link from 'next/link';
 import { useActionState, useState } from 'react';
-import { generateKeyAction, saveApiKeyAction, type SaveKeyState } from './actions';
+import { generateKeyAction, type SaveKeyState } from './actions';
 import {
   Button,
   Card,
   ErrorBanner,
-  Field,
-  Input,
   KeyRound,
   Link2,
   OtpField,
-  PasswordInput,
   ShieldCheck,
 } from '@/ui';
 
@@ -22,51 +19,7 @@ const FACTS = [
   'Stored encrypted. Nobody, admins included, can read the secret',
 ];
 
-function PasteKeyForm({ onDone }: { onDone?: () => void }) {
-  // Controlled, so a failed check doesn't make the user paste the key and secret again.
-  const [kid, setKid] = useState('');
-  const [secret, setSecret] = useState('');
-  const [state, action, pending] = useActionState<SaveKeyState, FormData>(async (prev, formData) => {
-    const r = await saveApiKeyAction(prev, formData);
-    if (r.done) onDone?.();
-    return r;
-  }, {});
-
-  return (
-    <form action={action} className="flex flex-col gap-4">
-      <Field label="API key" htmlFor="kid" hint="Created in the gateway portal with access from any IP address (*).">
-        <Input
-          id="kid"
-          name="kid"
-          autoComplete="off"
-          spellCheck={false}
-          className="font-mono"
-          placeholder="e.g. 4f1c9a07b2d8e653"
-          value={kid}
-          onChange={(e) => setKid(e.target.value)}
-        />
-      </Field>
-      <Field label="Secret key" htmlFor="secret" hint="The portal shows it only once. We check it with a balance call.">
-        <PasswordInput
-          id="secret"
-          name="secret"
-          autoComplete="off"
-          spellCheck={false}
-          className="font-mono"
-          value={secret}
-          onChange={(e) => setSecret(e.target.value)}
-        />
-      </Field>
-      {state.error && <ErrorBanner>{state.error}</ErrorBanner>}
-      <Button type="submit" disabled={pending} className="w-full">
-        <KeyRound />
-        {pending ? 'Checking key…' : 'Connect Key'}
-      </Button>
-    </form>
-  );
-}
-
-function GenerateKeyForm({ onDone }: { onDone?: () => void }) {
+export function GenerateKeyForm({ onDone }: { onDone?: () => void }) {
   const [code, setCode] = useState('');
   const [state, action, pending] = useActionState<SaveKeyState, FormData>(async (prev, formData) => {
     const r = await generateKeyAction(prev, formData);
@@ -87,7 +40,7 @@ function GenerateKeyForm({ onDone }: { onDone?: () => void }) {
   );
 }
 
-function TwoFactorFirst() {
+export function TwoFactorFirst({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col items-start gap-3">
       <span className="bg-warn-soft text-warn flex size-8 items-center justify-center rounded-md">
@@ -97,33 +50,20 @@ function TwoFactorFirst() {
         Generating a key needs two-factor authentication on your gateway account. It takes a minute with any
         authenticator app.
       </p>
-      <Button asChild variant="outline" size="sm">
-        <Link href="/profile#two-factor">Set Up Two-Factor Authentication</Link>
-      </Button>
+      {children}
     </div>
   );
 }
 
-// Generate is the main path; pasting a key made elsewhere is the alternative. One shows at a time.
 export function ConnectKeyPanel({ twoFactor, onDone }: { twoFactor: boolean | null; onDone?: () => void }) {
-  const [mode, setMode] = useState<'generate' | 'paste'>('generate');
-  return (
-    <div className="flex flex-col gap-4">
-      {mode === 'paste' ? (
-        <PasteKeyForm onDone={onDone} />
-      ) : twoFactor === false ? (
-        <TwoFactorFirst />
-      ) : (
-        <GenerateKeyForm onDone={onDone} />
-      )}
-      <button
-        type="button"
-        onClick={() => setMode(mode === 'paste' ? 'generate' : 'paste')}
-        className="text-primary self-center rounded-sm text-xs font-semibold outline-none hover:underline focus-visible:ring-[3px]"
-      >
-        {mode === 'paste' ? 'Generate a key here instead' : 'Have a key already? Paste it instead'}
-      </button>
-    </div>
+  return twoFactor === false ? (
+    <TwoFactorFirst>
+      <Button asChild variant="outline" size="sm">
+        <Link href="/profile#two-factor">Set Up Two-Factor Authentication</Link>
+      </Button>
+    </TwoFactorFirst>
+  ) : (
+    <GenerateKeyForm onDone={onDone} />
   );
 }
 

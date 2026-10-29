@@ -72,8 +72,7 @@ function RowsPreview({ review }: { review: UploadReview }) {
   );
 }
 
-// The whole upload → review → confirm flow in one overlay, so the files list stays where it was. Closing it
-// at any step is safe: an accepted file just waits in the list for confirmation.
+// Closing at any step is safe: an accepted file just waits in the list for confirmation.
 export function UploadDialog({ ruleNames, hasKey }: { ruleNames: Record<string, string>; hasKey: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);

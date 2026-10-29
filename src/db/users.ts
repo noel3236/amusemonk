@@ -30,3 +30,7 @@ export async function upsertUserOnLogin(input: {
     .executeTakeFirstOrThrow();
   return { id: user.id };
 }
+
+export async function userExists(id: string): Promise<boolean> {
+  return !!(await db().selectFrom('users').select('id').where('id', '=', id).executeTakeFirst());
+}

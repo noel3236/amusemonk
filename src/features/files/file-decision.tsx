@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { UploadWarning } from '@/db/schema';
 import { formatDateTime } from '@/lib/format';
 import { cancelFileAction, confirmPaymentAction } from './actions';
+import { lookAlikeIn, NOT_A_REPEAT_REQUIRED } from './look-alike';
 import {
   Badge,
   Banner,
@@ -36,8 +37,6 @@ export interface FileReview {
 
 export type DecisionMode = 'review' | 'cancel';
 
-const lookAlikeOf = (review: FileReview) => review.warnings.find((w) => w.code === 'SIMILAR_FILES');
-
 export function LookAlikeWarning({ warning, linkBase = '/files' }: { warning: UploadWarning; linkBase?: string }) {
   const n = warning.files.length;
   return (
@@ -55,8 +54,6 @@ export function LookAlikeWarning({ warning, linkBase = '/files' }: { warning: Up
   );
 }
 
-// Confirm Payment and Cancel File for a waiting file. The upload modal and the file page both drive this one
-// state, so the two places behave the same.
 export function useFileDecision(initialMode: DecisionMode = 'review') {
   const [mode, setMode] = useState(initialMode);
   const [done, setDone] = useState<'confirmed' | 'cancelled' | null>(null);
@@ -91,8 +88,8 @@ export function useFileDecision(initialMode: DecisionMode = 'review') {
       setError(null);
     },
     confirm(review: FileReview) {
-      if (lookAlikeOf(review) && !notARepeat) {
-        setError('Tick the box to confirm this isn’t a repeat.');
+      if (lookAlikeIn(review.warnings) && !notARepeat) {
+        setError(NOT_A_REPEAT_REQUIRED);
         return;
       }
       setError(null);
@@ -125,8 +122,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
-// The body and footer of the decision, for a dialog that already has its DialogHeader. `children` is extra
-// review content (the upload modal's row preview).
+// Renders a DialogBody and a DialogBar: place it in a pinned DialogContent, after the DialogHeader.
 export function FileDecision({
   d,
   review,
@@ -140,7 +136,7 @@ export function FileDecision({
   fileHref?: string;
   children?: ReactNode;
 }) {
-  const lookAlike = lookAlikeOf(review);
+  const lookAlike = lookAlikeIn(review.warnings);
   const payouts = `${review.rowCount} ${review.rowCount === 1 ? 'payout' : 'payouts'}`;
   const keep = () => (d.initialMode === 'cancel' ? onClose() : d.switchMode('review'));
 
@@ -242,7 +238,6 @@ export function FileDecision({
   );
 }
 
-// The decision on its own page-level dialog (the file page's Cancel File and Confirm Payment).
 export function FileDecisionDialog({ review, initialMode, children }: { review: FileReview; initialMode: DecisionMode; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const d = useFileDecision(initialMode);

@@ -16,6 +16,12 @@ export async function activeKeySummary(userId: string) {
     .executeTakeFirst();
 }
 
+// Every key amusemonk generated for this user, connected or long revoked (D-43 labels them in the key list).
+export async function generatedKids(userId: string): Promise<string[]> {
+  const rows = await db().selectFrom('user_api_keys').select('kid').where('user_id', '=', userId).where('origin', '=', 'generated').execute();
+  return rows.map((r) => r.kid);
+}
+
 export async function activeCredentials(userId: string): Promise<(UapiCredentials & { id: string }) | null> {
   const row = await db()
     .selectFrom('user_api_keys')
