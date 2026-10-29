@@ -129,6 +129,22 @@ describe('ingest: concurrency', () => {
   });
 });
 
+describe('ingest: duplicates are per user (D-41)', () => {
+  it('another user may send the same file and references; their repeat names only their own file', async () => {
+    const other = await makeUser('ING2');
+    await setRule('balance_check', false, USER); // global switch; afterAll turns it back on
+    const file = csv([row(`REFU${run}01`, '5555555501', '10.00'), row(`REFU${run}02`, '5555555502', '20.00')]);
+    expect((await upload('mine', file)).outcome).toBe('ACCEPTED');
+    expect((await upload('theirs', file, other.id)).outcome).toBe('ACCEPTED');
+
+    const again = await upload('theirs-again', file, other.id);
+    expect(codes(again)).toEqual(expect.arrayContaining(['DUPLICATE_FILE', 'DUPLICATE_REFERENCE']));
+    const messages = again.outcome === 'REJECTED' ? again.errors.map((e) => e.message).join(' ') : '';
+    expect(messages).toContain(`theirs-${run}.csv`);
+    expect(messages).not.toContain(`mine-${run}.csv`);
+  });
+});
+
 describe('rules: custom, locked, broken, audited', () => {
   it('a custom pattern rule rejects with its own message', async () => {
     const id = await createCustomRule({ kind: 'column_pattern', name: 'No SBI', params: { column: 'ifsc_code', pattern: '^SBIN', mode: 'must_not_match', message: 'SBI payouts are paused' } }, USER);

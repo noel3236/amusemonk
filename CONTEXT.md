@@ -42,7 +42,7 @@ Accepted: `.csv` (UTF-8, optional BOM) and `.xlsx` (first sheet). Header row req
 
 | Column | Required | Validation |
 |---|---|---|
-| `client_reference_id` | yes | `^[A-Za-z0-9_-]{8,64}$` (gateway limit). Sent to the gateway **verbatim** as its idempotency key. Globally unique **forever** across all files and all users. |
+| `client_reference_id` | yes | `^[A-Za-z0-9_-]{8,64}$` (gateway limit). Sent to the gateway **verbatim** as its idempotency key. Unique **forever** across all of that user's files (D-41). |
 | `bank_account` | yes | 9–18 digits. Leading zeros preserved (read as text). |
 | `ifsc_code` | yes | `^[A-Z]{4}0[A-Z0-9]{6}$` (upper-cased before check) |
 | `inr_amount` | yes | Positive decimal, max 2 decimal places, `>= MIN_PAYOUT_INR` and `<= MAX_PAYOUT_INR` |
@@ -67,7 +67,7 @@ whether a rule is on stays global; locked and custom rules can't be overridden. 
 
 | Group | Rules | Can admins change it? |
 |---|---|---|
-| **Always on** (locked) | `columns` (exact header set), `row_format` (gateway formats: reference `^[A-Za-z0-9_-]{8,64}$`, 9–18 digit account, IFSC, positive ≤2-decimal amount, real date, name), `duplicate_reference` (in file and across all files, forever), `duplicate_payment` (same account + IFSC + amount + date, in file and across files) | No. Enforced in code regardless of the DB, plus DB `CHECK`s and unique keys |
+| **Always on** (locked) | `columns` (exact header set), `row_format` (gateway formats: reference `^[A-Za-z0-9_-]{8,64}$`, 9–18 digit account, IFSC, positive ≤2-decimal amount, real date, name), `duplicate_reference` (in file and across all the user's files, forever), `duplicate_payment` (same account + IFSC + amount + date, in file and across the user's files) | No. Enforced in code regardless of the DB, plus DB `CHECK`s and unique keys |
 | **Configurable** | `max_file_size`, `max_rows`, `duplicate_filename`, `duplicate_file` (bytes), `duplicate_content` (canonical rows), `amount_range`, `file_total_max`, `balance_check`, `date_window`, `max_rows_per_account` | Switch on/off and tune settings |
 | **Custom** | `column_pattern` (a column must / must not match a regex), `value_list` (allow-only / block list for a column) | Add, edit, switch, delete (soft) |
 
@@ -265,7 +265,7 @@ the repo. **Changing or losing `SECRETS_KEY` makes every stored UAPI secret unre
 | D-4 | 2026-10-28 | No automatic retry after `insufficient_balance` | The reference is consumed; auto-creating a new reference is exactly how a double pay happens if the first one actually went through. Manual retry re-runs check-before-create first. |
 | D-5 | 2026-10-28 | Postgres only, no SQLite in tests | Locking/constraint semantics must be identical in test and prod. |
 | D-6 | 2026-10-28 | Worker runs in the same process by default (`RUN_WORKER=true`); can be split into a separate container | One deployable for small scale; horizontal scaling is safe because claiming uses `FOR UPDATE SKIP LOCKED`. |
-| D-7 | 2026-10-28 | `client_reference_id` uniqueness is global (across users), not per user | Two users (or one user with two logins) must not be able to pay the same order twice. |
+| D-7 | 2026-10-28 | ~~`client_reference_id` uniqueness is global (across users)~~ Superseded by D-41 | Made sense when every user shared one company gateway account. |
 | D-8 | 2026-10-28 | Rejected files consume nothing | A typo'd file must be re-uploadable after fixing. |
 | D-9 | 2026-10-28 | Penny-drop: send `penny_drop_required: true` (gateway default) | Safer; cost is latency. Configurable `PENNY_DROP_REQUIRED`. |
 | D-10 | 2026-10-28 | "Available balance" = gateway `balance` field as-is (not `balance − locked`) | Matches the user's existing production Ruby adapter (`validate_funds!` compares `balance` directly; peatio holds `locked` separately). If the real gateway turns out to include locked funds inside `balance`, change `availableBalancePaise()` in `src/gateway/client.ts` to subtract `locked`. |
@@ -283,7 +283,7 @@ the repo. **Changing or losing `SECRETS_KEY` makes every stored UAPI secret unre
 | D-23 | 2026-10-29 | ~~Superseded by D-34.~~ Keys are created with `scope: "uapi"` and `whitelisted_ips: ["*"]` | User decision: no IP whitelist (VPN exit rotates). In gatekeeper an EMPTY whitelist means *deny every IP* (`ApiKeyAuthService` passes only `*` or an exact match), so "no whitelist" must be `*`. Scope `uapi` keeps the key off the session APIs (authz sees the path without its leading slash). |
 | D-24 | 2026-10-29 | Admin "Revoke" only stops amusemonk using a key; it stays enabled at gatekeeper | Gatekeeper's `PATCH /admin/api_keys/:id` declares `:id` but looks up `declared_params[:kid]` (always nil → 404), so an admin cannot disable it via API. The UI says so. Revisit when atlas is fixed. |
 | D-25 | 2026-10-29 | Rules engine: 4 locked rules hard-coded on, 10 tunable, 2 custom templates (pattern, allow/block list) | User asked for rules that can be enabled, disabled or added. Custom regexes are trusted super-admin input (≤200 chars, values ≤100 chars); no RE2. |
-| D-26 | 2026-10-29 | One global ingest lock (`GET_LOCK`) around cross-file checks, balance check and insert | Makes the now non-unique duplicate-file checks and the balance check exact under concurrency. Uploads are rare; the lock waits ≤30 s, then answers BUSY. |
+| D-26 | 2026-10-29 | One ingest lock (`GET_LOCK`) around cross-file checks, balance check and insert; per user since D-41 | Makes the now non-unique duplicate-file checks and the balance check exact under concurrency. Uploads are rare; the lock waits ≤30 s, then answers BUSY. |
 | D-27 | 2026-10-29 | Raw bytes of every upload (accepted or rejected) are stored (S3 in prod, `.storage/` locally) before checks | Audit: an operator can see exactly what was refused and why. Storage failure rejects the upload. |
 | D-28 | 2026-10-29 | S3 and RDS are reached directly, not through the VPN | They are our own AWS infrastructure (instance role / VPC), not outside or backend APIs. Confirmed by the user 2026-10-29. |
 | D-29 | 2026-10-29 | The uploader approves (and cancels) their own file; no one else can | User decision. Replaces the source's admin-only maker-checker. |
@@ -298,6 +298,7 @@ the repo. **Changing or losing `SECRETS_KEY` makes every stored UAPI secret unre
 | D-38 | 2026-10-29 | `sandbox` and `prod` run side by side on the same box and RDS instance, each with its own gateway, database + DB user, bucket, secrets and hostname; prod only takes images that went to sandbox first | User: test on sandbox and run prod with no data mix-up, without buying more. MySQL grants enforce the database split; separate secrets make sessions and stored keys non-transferable. |
 | D-39 | 2026-10-30 | Two prods instead of one: `fintech` (fintech.amusemonk.com) and `galaxy` (galaxy.amusemonk.com), each isolated like D-38; the bare domain serves nothing | User decision. The first single `prod` (database `amusemonk`, user `amusemonk_app`, `/amusemonk/prod/*`) was never used and is idle pending deletion. |
 | D-40 | 2026-10-30 | A **Profile** tab, cekko-style: users generate their payout key in amusemonk (needs 2FA; created `scope: uapi`, `whitelisted_ips: ["*"]`, connected at once, secret never shown), turn 2FA on/off and change their gateway password. Pasting a key (D-34) stays as the secondary path. Revoking a generated key deletes it on the gateway; a pasted one is only disconnected (`user_api_keys.origin`) | User decision. Only amusemonk's own key is managed: other gateway keys may run the user's other integrations. A TOTP code is single-use, so replacing a key is revoke, then generate. |
+| D-41 | 2026-10-30 | Duplicate checks are per user: reference, payment (fingerprint), file name, bytes and content are compared only with the uploader's own files; unique keys are `(user_id, client_reference_id)` and `(user_id, content_fingerprint)` (migration 0008) | Each user pays from their own gateway account, and sub-users of one gateway merchant can't both use amusemonk (user, 2026-10-30), so the gateway's idempotency is per user too. Global checks rejected one customer's file because of another's, and their messages named the other customer's file. |
 | D-12 | 2026-10-28 | ~~Real Postgres + `mock-gateway/`~~ Integration tests run against a real MySQL (`TEST_DATABASE_URL`) and an in-process fake gateway (`tests/helpers/fake-gateway.ts`) that implements the sandbox rules | The suite exercises the real SQL (locks, unique keys, CHECKs) without touching the sandbox. |
 
 ## 11. Open questions for the product owner
@@ -310,7 +311,7 @@ the repo. **Changing or losing `SECRETS_KEY` makes every stored UAPI secret unre
 ## 11.1 Terminology
 | Term in UI | Column | Meaning |
 |---|---|---|
-| Reference | `payouts.client_reference_id` | the id from the user's file, sent verbatim to the gateway as its idempotency key; globally unique forever |
+| Reference | `payouts.client_reference_id` | the id from the user's file, sent verbatim to the gateway as its idempotency key; unique forever per user |
 | **Remote ID** | `payouts.gateway_payout_id` | the gateway-issued `payout_id` (`TID…`) |
 | UTR | `payouts.bank_transaction_id` | bank transaction reference, set on success |
 | Gateway | `payouts.gateway_name` | which configured gateway processed the payout |

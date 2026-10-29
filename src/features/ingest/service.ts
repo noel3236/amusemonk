@@ -19,8 +19,8 @@ export type IngestResult =
   | { outcome: 'REJECTED'; errors: UploadError[]; errorCount: number };
 
 const MAX_REPORTED_ERRORS = 500;
-// One upload at a time across the app: duplicate-file and balance checks see every committed file.
-const INGEST_LOCK = 'amusemonk_ingest';
+// One upload at a time per user (D-26, D-41): their duplicate and balance checks see every file they committed.
+const ingestLock = (userId: string) => `amusemonk_ingest:${userId}`;
 const CONTENT_TYPES: Record<string, string> = {
   csv: 'text/csv',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -28,6 +28,7 @@ const CONTENT_TYPES: Record<string, string> = {
 
 async function crossFileErrors(
   q: Db,
+  userId: string,
   rules: Ruleset,
   normalizedFilename: string,
   rawSha: string,
@@ -45,6 +46,7 @@ async function crossFileErrors(
     const files = await q
       .selectFrom('payout_files')
       .select(['original_filename', 'normalized_filename', 'raw_sha256', 'canonical_sha256', 'accepted_at'])
+      .where('user_id', '=', userId)
       .where(sql<boolean>`(${sql.join(checks, sql` OR `)})`)
       .limit(20)
       .execute();
@@ -66,6 +68,7 @@ async function crossFileErrors(
     .selectFrom('payouts as p')
     .innerJoin('payout_files as f', 'f.id', 'p.file_id')
     .select(['p.client_reference_id', 'p.content_fingerprint', 'p.status', 'p.file_row', 'f.original_filename'])
+    .where('p.user_id', '=', userId)
     .where((eb) =>
       eb.or([
         eb('p.client_reference_id', 'in', payouts.map((p) => p.clientReferenceId)),
@@ -182,12 +185,12 @@ export async function ingestFile(input: { userId: string; filename: string; buff
   const outcome = await db()
     .connection()
     .execute(async (conn): Promise<{ errors: UploadError[] } | { fileId: string }> => {
-      const [lock] = (await sql<{ ok: string | null }>`SELECT GET_LOCK(${INGEST_LOCK}, 30) AS ok`.execute(conn)).rows;
+      const [lock] = (await sql<{ ok: string | null }>`SELECT GET_LOCK(${ingestLock(userId)}, 30) AS ok`.execute(conn)).rows;
       if (String(lock?.ok) !== '1') {
-        return { errors: [{ code: 'BUSY', message: 'Another upload is being checked. Try again in a moment.' }] };
+        return { errors: [{ code: 'BUSY', message: 'Another of your uploads is being checked. Try again in a moment.' }] };
       }
       try {
-        const cross = await crossFileErrors(conn, ruleset, normalizedFilename, rawSha!, canonicalSha, v.payouts);
+        const cross = await crossFileErrors(conn, userId, ruleset, normalizedFilename, rawSha!, canonicalSha, v.payouts);
         if (cross.length) return { errors: cross };
 
         if (ruleset.balanceCheck) {
@@ -252,14 +255,14 @@ export async function ingestFile(input: { userId: string; filename: string; buff
         } catch (e) {
           // The unique keys are the guarantee; reaching here means the code checks above were bypassed.
           if (isDuplicateKey(e)) {
-            const again = await crossFileErrors(conn, ruleset, normalizedFilename, rawSha!, canonicalSha, v.payouts);
+            const again = await crossFileErrors(conn, userId, ruleset, normalizedFilename, rawSha!, canonicalSha, v.payouts);
             return { errors: again.length ? again : [{ code: 'DUPLICATE', message: 'The database rejected this file as a duplicate of an accepted one.' }] };
           }
           throw e;
         }
         return { fileId };
       } finally {
-        await sql`SELECT RELEASE_LOCK(${INGEST_LOCK})`.execute(conn);
+        await sql`SELECT RELEASE_LOCK(${ingestLock(userId)})`.execute(conn);
       }
     });
 
