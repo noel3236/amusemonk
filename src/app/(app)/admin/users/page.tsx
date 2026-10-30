@@ -6,6 +6,7 @@ import { allActiveOverrides, listUsersForAdmin } from '@/features/users/admin';
 import type { LimitRule } from '@/features/users/limits-button';
 import { UsersTable } from '@/features/users/users-table';
 import { parseListQuery } from '@/lib/list-params';
+import { viewerZone } from '@/lib/viewer-zone';
 import { EmptyState, ListFilters, UserRound } from '@/ui';
 
 export const metadata: Metadata = { title: 'Users' };
@@ -13,7 +14,7 @@ export const metadata: Metadata = { title: 'Users' };
 type SP = Record<string, string | string[] | undefined>;
 
 export default async function AdminUsersPage({ searchParams }: { searchParams: Promise<SP> }) {
-  const q = parseListQuery(await searchParams, USERS_SPEC);
+  const q = parseListQuery(await searchParams, USERS_SPEC, await viewerZone());
   const [users, rules, overrides] = await Promise.all([listUsersForAdmin(q), listRules(), allActiveOverrides()]);
   const limitRules: LimitRule[] = rules
     .filter((r) => isOverridableKind(r.kind))

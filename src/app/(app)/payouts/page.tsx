@@ -5,6 +5,7 @@ import { listPayouts, payoutFilterOptions } from '@/features/files/lists';
 import { PayoutsTable } from '@/features/files/payouts-table';
 import { PAYOUTS_SPEC } from '@/features/files/specs';
 import { pageHref, parseListQuery } from '@/lib/list-params';
+import { viewerZone } from '@/lib/viewer-zone';
 import { EmptyState, ListFilters, Pager, ScrollText } from '@/ui';
 
 export const metadata: Metadata = { title: 'Payouts' };
@@ -15,8 +16,9 @@ export default async function PayoutsPage({ searchParams }: { searchParams: Prom
   const session = await auth();
   if (!session?.user) redirect('/login');
   const sp = await searchParams;
-  const q = parseListQuery(sp, PAYOUTS_SPEC);
-  const [list, options] = await Promise.all([listPayouts({ userId: session.user.id }, q), payoutFilterOptions(session.user.id)]);
+  const zone = await viewerZone();
+  const q = parseListQuery(sp, PAYOUTS_SPEC, zone);
+  const [list, options] = await Promise.all([listPayouts({ userId: session.user.id }, q), payoutFilterOptions(session.user.id, zone)]);
 
   return (
     <div className="flex flex-col gap-3">

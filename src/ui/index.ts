@@ -10,6 +10,7 @@ export * from './primitives/table';
 export * from './primitives/dialog';
 export * from './primitives/switch';
 export * from './primitives/native-select';
+export * from './primitives/tooltip';
 
 export * from './atoms/field';
 export * from './atoms/password-input';
@@ -31,6 +32,8 @@ export * from './filters/list-filters';
 export * from './primitives/sheet';
 export * from './pager';
 export * from './auto-refresh';
+export * from './time/time';
+export * from './time/zone';
 
 export { cn } from '@/lib/cn';
 export { toast } from 'sonner';

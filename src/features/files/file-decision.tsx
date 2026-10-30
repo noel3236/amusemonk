@@ -3,7 +3,7 @@
 import { useState, useTransition, type ReactNode } from 'react';
 import Link from 'next/link';
 import type { UploadWarning } from '@/db/schema';
-import { formatDateTime, formatRupees } from '@/lib/format';
+import { formatRupees } from '@/lib/format';
 import { cancelFileAction, confirmPaymentAction } from './actions';
 import { lookAlikeIn, NOT_A_REPEAT_REQUIRED } from './look-alike';
 import {
@@ -26,6 +26,7 @@ import {
   FileSpreadsheet,
   Send,
   Textarea,
+  Time,
 } from '@/ui';
 
 export interface FileReview {
@@ -33,7 +34,7 @@ export interface FileReview {
   filename: string;
   rowCount: number;
   totalPaise: string;
-  balance: { paise: string; asOf: string } | null;
+  balance: { paise: string; asOf: string | null } | null;
   warnings: UploadWarning[];
 }
 
@@ -49,7 +50,7 @@ export function LookAlikeWarning({ warning, linkBase = '/files' }: { warning: Up
         {warning.files.map((f) => (
           <span key={f.id} className="inline-flex items-center gap-1">
             <Link href={`${linkBase}/${f.id}`} target="_blank" className="font-semibold underline-offset-2 hover:underline">
-              {f.name} <span className="text-muted-foreground font-normal">· {formatDateTime(new Date(f.uploadedAt))}</span>
+              {f.name} <span className="text-muted-foreground font-normal">· <Time at={f.uploadedAt} /></span>
             </Link>
             <Copyable value={f.name} display="" label="file name" />
           </span>
@@ -117,7 +118,7 @@ export function useFileDecision(initialMode: DecisionMode = 'review') {
 
 export type FileDecisionState = ReturnType<typeof useFileDecision>;
 
-function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: string }) {
+function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-muted-foreground text-[11px] font-bold tracking-wide uppercase">{label}</span>
@@ -176,7 +177,7 @@ export function FileDecision({
               <Stat
                 label="Your balance"
                 value={<CopyableAmount paise={review.balance?.paise} />}
-                sub={review.balance ? `as of ${review.balance.asOf} · checked again before sending` : 'checked with the gateway before sending'}
+                sub={review.balance ? <>as of <Time at={review.balance.asOf} /> · checked again before sending</> : 'checked with the gateway before sending'}
               />
             </div>
             <p className="text-muted-foreground text-xs">

@@ -24,11 +24,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Time,
   Trash2,
   toast,
 } from '@/ui';
 
-export type GatewayKeyRow = { kid: string; scope: string; ips: string[]; active: boolean; created: string };
+export type GatewayKeyRow = { kid: string; scope: string; ips: string[]; active: boolean; createdAt: Date | null };
 export type ConnectedKey = { kid: string; origin: 'pasted' | 'generated' };
 
 function GenerateKeyButton({ twoFactor }: { twoFactor: boolean | null }) {
@@ -228,7 +229,9 @@ export function GatewayKeys({
                   <TableCell>
                     <Badge tone={k.active ? 'ok' : 'neutral'}>{k.active ? 'Active' : 'Disabled'}</Badge>
                   </TableCell>
-                  <TableCell className="tabular text-muted-foreground text-xs">{k.created}</TableCell>
+                  <TableCell className="text-muted-foreground text-xs">
+                    <Time at={k.createdAt} inline />
+                  </TableCell>
                   <TableCell>
                     <span className="flex justify-end">
                       {inUse ? (

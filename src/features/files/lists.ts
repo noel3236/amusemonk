@@ -2,6 +2,7 @@ import { sql } from 'kysely';
 import { db } from '@/db';
 import type { FileStatus, PayoutStatus } from '@/db/schema';
 import { formatDateTime } from '@/lib/format';
+import { BUSINESS_ZONE, type ZoneId } from '@/lib/timezones';
 import type { ListQuery } from '@/lib/list-params';
 import type { SelectOptions } from '@/lib/list-spec';
 import { FILE_GROUPS, PAYOUT_GROUPS } from './specs';
@@ -98,7 +99,7 @@ export async function listPayouts(scope: { userId?: string; fileId?: string }, q
 }
 
 // Options for the payouts list's select filters, from what this user actually has.
-export async function payoutFilterOptions(userId: string): Promise<SelectOptions> {
+export async function payoutFilterOptions(userId: string, zone: ZoneId = BUSINESS_ZONE): Promise<SelectOptions> {
   const [statuses, files] = await Promise.all([
     db()
       .selectFrom('payouts')
@@ -118,7 +119,7 @@ export async function payoutFilterOptions(userId: string): Promise<SelectOptions
   ]);
   return {
     gw: statuses.map((r) => ({ value: r.gateway_status!, label: r.gateway_status! })),
-    file: files.map((f) => ({ value: f.id, label: `${f.original_filename} · ${formatDateTime(f.created_at)}` })),
+    file: files.map((f) => ({ value: f.id, label: `${f.original_filename} · ${formatDateTime(f.created_at, zone)}` })),
   };
 }
 

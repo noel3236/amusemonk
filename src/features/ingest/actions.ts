@@ -5,7 +5,6 @@ import { auth } from '@/auth';
 import { db } from '@/db';
 import { lastBalance } from '@/features/balance/server';
 import type { FileReview } from '@/features/files/file-decision';
-import { formatDateTime } from '@/lib/format';
 import { ingestFile, type IngestResult } from './service';
 
 const PREVIEW_ROWS = 100;
@@ -52,7 +51,7 @@ export async function uploadFileAction(_prev: UploadState, formData: FormData): 
       filename: file.name,
       rowCount: result.rowCount,
       totalPaise: result.totalPaise,
-      balance: balance?.balance_paise ? { paise: balance.balance_paise, asOf: formatDateTime(balance.fetched_at) } : null,
+      balance: balance?.balance_paise ? { paise: balance.balance_paise, asOf: balance.fetched_at?.toISOString() ?? null } : null,
       warnings: f.warnings_json,
       rows: rows.map((r) => ({
         row: r.file_row,

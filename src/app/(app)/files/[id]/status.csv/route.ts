@@ -4,7 +4,7 @@ import { filePayoutsForExport } from '@/features/files/lists';
 import { getFile } from '@/features/files/server';
 import { COLUMNS } from '@/features/rules/catalog';
 import { csvResponse, toCsv } from '@/lib/csv';
-import { DISPLAY_ZONE } from '@/lib/format';
+import { BUSINESS_ZONE } from '@/lib/timezones';
 import { paiseToInr } from '@/lib/money';
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -40,7 +40,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       p.gateway_status_code,
       p.gateway_status_message ?? p.failure_reason,
       p.attempt_count,
-      DateTime.fromJSDate(p.updated_at).setZone(DISPLAY_ZONE).toISO({ suppressMilliseconds: true }),
+      DateTime.fromJSDate(p.updated_at).setZone(BUSINESS_ZONE).toISO({ suppressMilliseconds: true }),
     ])
   );
   const stem = file.original_filename.replace(/\.(csv|xlsx)$/i, '');

@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { isSuperAdmin } from '@/auth/roles';
 import { userExists } from '@/db/users';
-import { AppShell } from '@/ui';
+import { viewerZone } from '@/lib/viewer-zone';
+import { AppShell, ZoneProvider } from '@/ui';
 import { logoutAction } from './actions';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -11,12 +12,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!session?.user || !(await userExists(session.user.id))) redirect('/login');
 
   return (
-    <AppShell
-      user={{ email: session.user.email ?? null }}
-      isAdmin={isSuperAdmin(session.user.role)}
-      signOutAction={logoutAction}
-    >
-      {children}
-    </AppShell>
+    <ZoneProvider initial={await viewerZone()}>
+      <AppShell
+        user={{ email: session.user.email ?? null }}
+        isAdmin={isSuperAdmin(session.user.role)}
+        signOutAction={logoutAction}
+      >
+        {children}
+      </AppShell>
+    </ZoneProvider>
   );
 }

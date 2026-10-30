@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { fetchPayoutStatusAction, payoutRawAction, type RawExchange } from './actions';
-import { Braces, Button, Copyable, Dialog, DialogBody, DialogContent, DialogHeader, DialogTrigger, ErrorBanner, RefreshCw, toast } from '@/ui';
+import { Braces, Button, Copyable, Dialog, DialogBody, DialogContent, DialogHeader, DialogTrigger, ErrorBanner, RefreshCw, Time, toast } from '@/ui';
 
 export function FetchStatusButton({ payoutId, reference }: { payoutId: string; reference: string }) {
   const [pending, start] = useTransition();
@@ -27,12 +27,14 @@ export function FetchStatusButton({ payoutId, reference }: { payoutId: string; r
 }
 
 function Json({ label, value }: { label: string; value: unknown }) {
+  const json = value === null || value === undefined ? null : JSON.stringify(value, null, 2);
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <span className="text-muted-foreground text-[11px] font-bold tracking-[0.12em] uppercase">{label}</span>
-      <pre className="bg-surface max-h-80 overflow-auto rounded-md border p-3 font-mono text-xs leading-relaxed">
-        {value === null || value === undefined ? '—' : JSON.stringify(value, null, 2)}
-      </pre>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-muted-foreground text-[11px] font-bold tracking-[0.12em] uppercase">{label}</span>
+        {json && <Copyable value={json} display="Copy" label={`${label} JSON`} mono={false} className="text-xs" />}
+      </div>
+      <pre className="bg-surface max-h-80 overflow-auto rounded-md border p-3 font-mono text-xs leading-relaxed">{json ?? '—'}</pre>
     </div>
   );
 }
@@ -68,7 +70,7 @@ export function RawDataButton({ payoutId, reference }: { payoutId: string; refer
               <section key={i} className="bg-surface/60 flex flex-col gap-3 rounded-lg border p-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <h3 className="text-sm font-bold">{x.title}</h3>
-                  <span className="text-muted-foreground tabular text-xs">{x.at}</span>
+                  <Time at={x.at} className="text-muted-foreground text-xs" />
                 </div>
                 {x.meta && <div className="text-muted-foreground font-mono text-xs">{x.meta}</div>}
                 {x.request !== undefined && <Json label="Request" value={x.request} />}

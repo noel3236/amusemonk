@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon';
-import { DISPLAY_ZONE } from './format';
 import type { ListSpec } from './list-spec';
 import { parseInrToPaise } from './money';
+import { BUSINESS_ZONE, type ZoneId } from './timezones';
 
 type SP = Record<string, string | string[] | undefined>;
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)?.trim() || undefined;
@@ -23,9 +23,9 @@ export interface ListQuery {
   page: number;
 }
 
-// Days are judged in IST and turned into UTC instants: [from, to).
-function dayRange(sp: SP): { from?: Date; to?: Date } {
-  const today = DateTime.now().setZone(DISPLAY_ZONE).startOf('day');
+// Days are judged in the viewer's zone and turned into UTC instants: [from, to).
+function dayRange(sp: SP, zone: ZoneId): { from?: Date; to?: Date } {
+  const today = DateTime.now().setZone(zone).startOf('day');
   const range = one(sp.range);
   const at = (d: DateTime) => d.toUTC().toJSDate();
   switch (range) {
@@ -41,7 +41,7 @@ function dayRange(sp: SP): { from?: Date; to?: Date } {
       return { from: at(today.startOf('month')), to: at(today.plus({ days: 1 })) };
   }
   const parse = (v: string | undefined) => {
-    const d = v ? DateTime.fromISO(v, { zone: DISPLAY_ZONE }) : null;
+    const d = v ? DateTime.fromISO(v, { zone }) : null;
     return d?.isValid ? d.startOf('day') : null;
   };
   const from = parse(one(sp.from));
@@ -50,11 +50,11 @@ function dayRange(sp: SP): { from?: Date; to?: Date } {
 }
 
 // Anything not in the spec, or malformed, is ignored rather than trusted.
-export function parseListQuery(sp: SP, spec: ListSpec): ListQuery {
+export function parseListQuery(sp: SP, spec: ListSpec, zone: ZoneId = BUSINESS_ZONE): ListQuery {
   const pick = <T extends { value: string }>(list: readonly T[] | undefined, v: string | undefined) =>
     v && list?.some((x) => x.value === v) ? v : undefined;
   const q = one(sp.q)?.slice(0, 64);
-  const dates = spec.dates ? dayRange(sp) : {};
+  const dates = spec.dates ? dayRange(sp, zone) : {};
   const amount = (v: string | undefined) => (spec.amount && v ? parseInrToPaise(v) ?? undefined : undefined);
   const rows = (v: string | undefined) => (spec.rows && v && /^\d{1,7}$/.test(v) ? Number(v) : undefined);
   return {

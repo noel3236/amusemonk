@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { formatCount, formatDateTime } from '@/lib/format';
-import { ArrowRight, Badge, Button, Copyable, CopyableAmount, DataTable, cn, type Column } from '@/ui';
+import { formatCount } from '@/lib/format';
+import { ArrowRight, Badge, Button, Copyable, CopyableAmount, DataTable, cn, type Column, Time } from '@/ui';
 import { FileLink } from './file-link';
 import type { FileListRow } from './lists';
 import { RejectFileButton } from './reject-button';
@@ -23,7 +23,7 @@ export function FilesTable({
 }) {
   const href = (f: FileListRow) => (mode === 'owner' ? `/files/${f.id}` : `/admin/files/${f.id}`);
   const columns: Column<FileListRow>[] = [
-    { key: 'uploaded', header: 'Uploaded', className: 'tabular', render: (f) => formatDateTime(f.created_at) },
+    { key: 'uploaded', header: 'Uploaded', className: 'tabular', render: (f) => <Time at={f.created_at} inline /> },
     ...(mode === 'admin'
       ? [
           {

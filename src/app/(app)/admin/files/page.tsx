@@ -3,6 +3,7 @@ import { FilesTable } from '@/features/files/files-table';
 import { listFiles } from '@/features/files/lists';
 import { ADMIN_FILES_SPEC } from '@/features/files/specs';
 import { pageHref, parseListQuery } from '@/lib/list-params';
+import { viewerZone } from '@/lib/viewer-zone';
 import { EmptyState, FileSpreadsheet, ListFilters, Pager } from '@/ui';
 
 export const metadata: Metadata = { title: 'All files' };
@@ -11,7 +12,7 @@ type SP = Record<string, string | string[] | undefined>;
 
 export default async function AdminFilesPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
-  const q = parseListQuery(sp, ADMIN_FILES_SPEC);
+  const q = parseListQuery(sp, ADMIN_FILES_SPEC, await viewerZone());
   const list = await listFiles({}, q);
   return (
     <div className="flex flex-col gap-3">

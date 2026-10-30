@@ -6,6 +6,8 @@ import { Gauge, Files, ScrollText, ShieldCheck, LogOut, UserRound, UserRoundCog 
 import { cn } from '@/lib/cn';
 import { Wordmark } from '../logo';
 import { ThemeToggle } from '../theme-toggle';
+import { ZonePicker } from '../time/zone-picker';
+import { RefreshButton } from './refresh-button';
 import { Button } from '../primitives/button';
 import {
   DropdownMenu,
@@ -70,6 +72,8 @@ export function AppShell({
           </nav>
 
           <div className="ml-auto flex items-center gap-1">
+            <RefreshButton />
+            <ZonePicker />
             <ThemeToggle />
             {user && (
               <DropdownMenu>

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { lastBalance } from '@/features/balance/server';
 import { RejectFileButton } from '@/features/files/reject-button';
-import { formatDateTime, formatRupees } from '@/lib/format';
+import { formatRupees } from '@/lib/format';
 import {
   ArrowLeft,
   AutoRefresh,
@@ -22,9 +22,11 @@ import {
   Pager,
   Send,
   cn,
+  Time,
 } from '@/ui';
 import { FileDecisionDialog, LookAlikeWarning, type FileReview } from './file-decision';
 import { pageHref, parseListQuery } from '@/lib/list-params';
+import { viewerZone } from '@/lib/viewer-zone';
 import type { ListSpec } from '@/lib/list-spec';
 import { listPayouts } from './lists';
 import { lookAlikeIn } from './look-alike';
@@ -58,7 +60,7 @@ export async function FileDetail({
   mode: 'owner' | 'admin';
 }) {
   const base = mode === 'owner' ? `/files/${file.id}` : `/admin/files/${file.id}`;
-  const q = parseListQuery(sp, FILE_PAYOUTS_SPEC);
+  const q = parseListQuery(sp, FILE_PAYOUTS_SPEC, await viewerZone());
   const [summary, list, balance] = await Promise.all([
     fileSummary(file.id),
     listPayouts({ fileId: file.id }, q, 100),
@@ -75,7 +77,7 @@ export async function FileDetail({
     filename: file.original_filename,
     rowCount: file.row_count,
     totalPaise: file.total_amount_paise,
-    balance: balance?.balance_paise ? { paise: balance.balance_paise, asOf: formatDateTime(balance.fetched_at) } : null,
+    balance: balance?.balance_paise ? { paise: balance.balance_paise, asOf: balance.fetched_at?.toISOString() ?? null } : null,
     warnings: file.warnings_json,
   };
   // Before confirmation nothing is in progress yet: the same chip reads "Not confirmed".
@@ -104,9 +106,9 @@ export async function FileDetail({
             </div>
             <p className="text-muted-foreground tabular truncate text-xs">
               {mode === 'admin' && <>{file.owner_email} · </>}
-              {file.row_count} {file.row_count === 1 ? 'payout' : 'payouts'} · <CopyableAmount paise={file.total_amount_paise} /> · Uploaded {formatDateTime(file.created_at)}
-              {file.approved_at && <> · Confirmed {formatDateTime(file.approved_at)}</>}
-              {finished && file.completed_at && <> · Finished {formatDateTime(file.completed_at)}</>}
+              {file.row_count} {file.row_count === 1 ? 'payout' : 'payouts'} · <CopyableAmount paise={file.total_amount_paise} /> · Uploaded <Time at={file.created_at} />
+              {file.approved_at && <> · Confirmed <Time at={file.approved_at} /></>}
+              {finished && file.completed_at && <> · Finished <Time at={file.completed_at} /></>}
             </p>
           </div>
         </div>
@@ -152,13 +154,13 @@ export async function FileDetail({
       {lookAlike && <LookAlikeWarning warning={lookAlike} linkBase={mode === 'owner' ? '/files' : '/admin/files'} />}
       {file.status === 'REJECTED' && (
         <Banner tone="bad" icon={<CircleX />}>
-          <span className="font-bold">Rejected by an admin {formatDateTime(file.cancelled_at)}</span>
+          <span className="font-bold">Rejected by an admin <Time at={file.cancelled_at} /></span>
           <span>{file.cancel_reason}</span>
         </Banner>
       )}
       {file.status === 'CANCELLED' && (
         <Banner tone="neutral" icon={<CircleAlert />}>
-          <span className="font-bold">Cancelled {formatDateTime(file.cancelled_at)}</span>
+          <span className="font-bold">Cancelled <Time at={file.cancelled_at} /></span>
           <span>{file.cancel_reason || 'No reason given.'} Nothing from this file was sent.</span>
         </Banner>
       )}

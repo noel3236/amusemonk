@@ -9,7 +9,7 @@ import { lastBalance } from '@/features/balance/server';
 import { dashboardStats, listFilesForUser } from '@/features/files/server';
 import { FileLink } from '@/features/files/file-link';
 import { FILE_STATUS } from '@/features/files/status';
-import { formatDateTime, formatRupees } from '@/lib/format';
+import { formatRupees } from '@/lib/format';
 import {
   ArrowRight,
   AutoRefresh,
@@ -28,6 +28,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Time,
   Upload,
   Wallet,
   CircleCheck,
@@ -107,7 +108,7 @@ export default async function DashboardPage() {
           value={<CopyableAmount paise={balance?.balance_paise} />}
           sub={
             <>
-              {balanceStale ? `Couldn’t refresh at ${formatDateTime(balance!.error_at)}` : `As of ${formatDateTime(balance?.fetched_at)}`}
+              {balanceStale ? <>Couldn’t refresh at <Time at={balance!.error_at} /></> : <>As of <Time at={balance?.fetched_at} /></>}
               <span className="mt-1 flex items-center gap-1.5">
                 <KeyRound className="size-3" />
                 <Copyable value={key.kid} label="API key" className="text-foreground" />
@@ -170,7 +171,7 @@ export default async function DashboardPage() {
                     <Copyable value={f.original_filename} label="file name" mono={false} />
                   </span>
                   <span className="text-muted-foreground tabular text-xs">
-                    {plural(f.row_count, 'payout', 'payouts')} · uploaded {formatDateTime(f.created_at)}
+                    {plural(f.row_count, 'payout', 'payouts')} · uploaded <Time at={f.created_at} />
                   </span>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
@@ -235,7 +236,9 @@ export default async function DashboardPage() {
             <TableBody>
               {recent.map((f) => (
                 <TableRow key={f.id}>
-                  <TableCell className="tabular">{formatDateTime(f.created_at)}</TableCell>
+                  <TableCell>
+                    <Time at={f.created_at} inline />
+                  </TableCell>
                   <TableCell className="max-w-80">
                     <FileLink href={`/files/${f.id}`} name={f.original_filename} />
                   </TableCell>

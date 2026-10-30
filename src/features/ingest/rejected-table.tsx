@@ -1,14 +1,13 @@
 'use client';
 
 import type { UploadError } from '@/db/schema';
-import { formatDateTime } from '@/lib/format';
-import { Button, Copyable, DataTable, Download, type Column } from '@/ui';
+import { Button, Copyable, DataTable, Download, type Column, Time } from '@/ui';
 
 type Row = { id: string; original_filename: string; created_at: Date; errors_json: UploadError[] };
 
 export function RejectedTable({ rows, empty }: { rows: Row[]; empty: React.ReactNode }) {
   const columns: Column<Row>[] = [
-    { key: 'uploaded', header: 'Uploaded', className: 'tabular', render: (u) => formatDateTime(u.created_at) },
+    { key: 'uploaded', header: 'Uploaded', className: 'tabular', render: (u) => <Time at={u.created_at} inline /> },
     { key: 'file', header: 'File', className: 'max-w-72 font-semibold', render: (u) => <Copyable value={u.original_filename} label="file name" mono={false} /> },
     { key: 'problems', header: 'Problems', align: 'right', className: 'tabular', render: (u) => u.errors_json.length },
     {

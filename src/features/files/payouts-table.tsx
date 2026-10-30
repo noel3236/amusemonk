@@ -1,7 +1,18 @@
 'use client';
 
-import { formatCount, formatDateTime } from '@/lib/format';
-import { Badge, Copyable, CopyableAmount, DataTable, type Column } from '@/ui';
+import { formatCount } from '@/lib/format';
+import {
+  Badge,
+  Copyable,
+  CopyableAmount,
+  DataTable,
+  type Column,
+  Time,
+  Tooltip,
+  TooltipContent,
+  TooltipLabel,
+  TooltipTrigger,
+} from '@/ui';
 import { FetchStatusButton, RawDataButton } from './file-actions';
 import { FileLink } from './file-link';
 import type { PayoutRow } from './lists';
@@ -57,15 +68,27 @@ export function PayoutsTable({
     {
       key: 'status',
       header: 'Status',
-      className: 'max-w-64 whitespace-normal',
       render: (p) => {
         const st = payoutStatus(p.status, p.file_status);
         const problem = p.status === 'FAILED' || p.status === 'REFUNDED' ? p.gateway_status_message || p.failure_reason : null;
+        if (!problem) return <Badge tone={st.tone}>{st.label}</Badge>;
+        // Hover-only, like the dates in a table: a tab stop per row would make keyboard users walk every remark.
         return (
-          <>
-            <Badge tone={st.tone}>{st.label}</Badge>
-            {problem && <div className="text-bad mt-1 text-xs">{problem}</div>}
-          </>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="flex cursor-default flex-col items-start">
+                <Badge tone={st.tone}>{st.label}</Badge>
+                <span className="text-bad mt-1 max-w-56 truncate text-xs">{problem}</span>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <TooltipLabel className="block">
+                {st.label}
+                {p.gateway_status && ` · ${p.gateway_status}`}
+              </TooltipLabel>
+              <span className="mt-0.5 block">{problem}</span>
+            </TooltipContent>
+          </Tooltip>
         );
       },
     },
@@ -75,7 +98,7 @@ export function PayoutsTable({
       header: 'Gateway ID',
       render: (p) => (p.gateway_payout_id ? <Copyable value={p.gateway_payout_id} label="gateway payout ID" /> : <span className="text-muted-foreground">—</span>),
     },
-    { key: 'updated', header: 'Updated', className: 'tabular text-muted-foreground text-xs', render: (p) => formatDateTime(p.updated_at) },
+    { key: 'updated', header: 'Updated', className: 'tabular text-muted-foreground text-xs', render: (p) => <Time at={p.updated_at} inline /> },
   ];
   columns.push({
     key: 'actions',

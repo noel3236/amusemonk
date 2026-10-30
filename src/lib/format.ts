@@ -1,11 +1,22 @@
 import { DateTime } from 'luxon';
 import { formatInr } from './money';
+import { abbrOf, DEFAULT_ZONE, type ZoneId } from './timezones';
 
-export const DISPLAY_ZONE = 'Asia/Kolkata';
+export type DateInput = Date | string | number | null | undefined;
 
-export function formatDateTime(d: Date | null | undefined): string {
-  if (!d) return '—';
-  return DateTime.fromJSDate(d).setZone(DISPLAY_ZONE).toFormat("d LLL yyyy, HH:mm 'IST'");
+export function toDateTime(d: DateInput): DateTime | null {
+  if (d === null || d === undefined || d === '') return null;
+  const dt = d instanceof Date ? DateTime.fromJSDate(d) : typeof d === 'number' ? DateTime.fromMillis(d) : DateTime.fromISO(d);
+  return dt.isValid ? dt : null;
+}
+
+export function formatDateTime(d: DateInput, zone: ZoneId = DEFAULT_ZONE): string {
+  const dt = toDateTime(d);
+  return dt ? `${dt.setZone(zone).toFormat('d LLL yyyy, HH:mm')} ${abbrOf(zone)}` : '—';
+}
+
+export function formatRelative(d: DateInput): string {
+  return toDateTime(d)?.toRelative() ?? '—';
 }
 
 export function formatCount(n: number): string {

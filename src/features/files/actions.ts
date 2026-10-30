@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/auth';
 import { db } from '@/db';
-import { formatDateTime } from '@/lib/format';
 import { workerConfig } from '@/worker/config';
 import { productionDeps } from '@/worker/deps';
 import { refreshPayout } from '@/worker/refresh';
@@ -63,7 +62,7 @@ export async function fetchPayoutStatusAction(payoutId: string): Promise<Result 
 
 export interface RawExchange {
   title: string;
-  at: string;
+  at: string | null;
   meta?: string;
   request?: unknown;
   response: unknown;
@@ -87,12 +86,12 @@ export async function payoutRawAction(payoutId: string): Promise<{ error?: strin
     .execute();
   const exchanges: RawExchange[] = [];
   if (p.gateway_response_json !== null) {
-    exchanges.push({ title: 'Latest status', at: formatDateTime(p.last_polled_at), meta: 'GET /account/payouts/status', response: p.gateway_response_json });
+    exchanges.push({ title: 'Latest status', at: p.last_polled_at?.toISOString() ?? null, meta: 'GET /account/payouts/status', response: p.gateway_response_json });
   }
   for (const a of attempts) {
     exchanges.push({
       title: `Initiate · attempt ${a.attempt_no}`,
-      at: formatDateTime(a.created_at),
+      at: a.created_at.toISOString(),
       meta: [`POST /account/payouts/initiate`, a.http_status && `HTTP ${a.http_status}`, a.outcome].filter(Boolean).join(' · '),
       request: a.request_json,
       response: a.response_json,

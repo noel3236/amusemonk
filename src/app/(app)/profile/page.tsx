@@ -5,7 +5,6 @@ import { GatewayKeys } from '@/features/api-keys/gateway-keys';
 import { activeKeySummary, generatedKids } from '@/features/api-keys/server';
 import { SecurityCard } from '@/features/profile/security-card';
 import { gatewayAccount, listGatewayKeys, type GatewayAccount } from '@/features/profile/server';
-import { formatDateTime } from '@/lib/format';
 import { Badge, Card, Copyable, ErrorBanner } from '@/ui';
 
 export const metadata: Metadata = { title: 'Profile' };
@@ -55,7 +54,7 @@ export default async function ProfilePage() {
                   scope: k.scope,
                   ips: k.ips,
                   active: k.status === 'active' || k.status === 'enable',
-                  created: formatDateTime(k.createdAt),
+                  createdAt: k.createdAt,
                 }))
               : []
           }

@@ -1,8 +1,7 @@
 'use client';
 
 import { RevokeKeyButton } from '@/features/api-keys/revoke-button';
-import { formatDateTime } from '@/lib/format';
-import { Badge, Copyable, DataTable, type Column } from '@/ui';
+import { Badge, Copyable, DataTable, type Column, Time } from '@/ui';
 import { UserLimitsButton, type LimitRule } from './limits-button';
 
 type UserRow = {
@@ -45,14 +44,14 @@ export function UsersTable({
         u.kid ? (
           <>
             <Copyable value={u.kid} label="API key ID" />
-            <div className="text-muted-foreground text-xs">Connected {formatDateTime(u.key_created_at)}</div>
+            <div className="text-muted-foreground text-xs">Connected <Time at={u.key_created_at} inline /></div>
           </>
         ) : (
           <Badge>Not connected</Badge>
         ),
     },
     { key: 'files', header: 'Files', align: 'right', className: 'tabular', render: (u) => u.files },
-    { key: 'login', header: 'Last sign-in', className: 'tabular', render: (u) => formatDateTime(u.last_login_at) },
+    { key: 'login', header: 'Last sign-in', className: 'tabular', render: (u) => <Time at={u.last_login_at} inline /> },
     {
       key: 'actions',
       header: '',

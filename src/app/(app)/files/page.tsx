@@ -10,6 +10,7 @@ import { listRejectedUploads } from '@/features/ingest/server';
 import { UploadDialog } from '@/features/ingest/upload-dialog';
 import { listRules } from '@/features/rules/server';
 import { pageHref, parseListQuery } from '@/lib/list-params';
+import { viewerZone } from '@/lib/viewer-zone';
 import { EmptyState, FileSpreadsheet, FilterChips, ListFilters, Pager } from '@/ui';
 
 export const metadata: Metadata = { title: 'Files' };
@@ -21,7 +22,7 @@ export default async function FilesPage({ searchParams }: { searchParams: Promis
   if (!session?.user) redirect('/login');
   const sp = await searchParams;
   const rejectedView = sp.view === 'rejected';
-  const q = parseListQuery(sp, FILES_SPEC);
+  const q = parseListQuery(sp, FILES_SPEC, await viewerZone());
 
   const [key, list, rejected, rules] = await Promise.all([
     activeKeySummary(session.user.id),
