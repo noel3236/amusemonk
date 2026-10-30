@@ -9,20 +9,39 @@
 	}
 }
 
+# Scanners probe every host for secrets and admin pages: answer them here, so they never reach an app or log as its errors.
+(probes) {
+	@probe path /.env* /.git* /.svn* /.hg* /.aws* /.ssh* /.DS_Store /*.php /actuator* /_profiler* /wp-* /phpmyadmin* /server-status*
+	handle @probe {
+		respond 404
+	}
+}
+
+# routes/<env>.caddy is written by box-deploy.sh: forward once the environment has been deployed, otherwise answer
+# "Not live yet" here rather than fail to reach a container that doesn't exist.
 sandbox.amusemonk.com {
 	import common
 	header X-Robots-Tag "noindex, nofollow"
-	reverse_proxy sandbox-web:3400
+	import probes
+	handle {
+		import routes/sandbox.caddy
+	}
 }
 
 fintech.amusemonk.com {
 	import common
-	reverse_proxy fintech-web:3400
+	import probes
+	handle {
+		import routes/fintech.caddy
+	}
 }
 
 galaxy.amusemonk.com {
 	import common
-	reverse_proxy galaxy-web:3400
+	import probes
+	handle {
+		import routes/galaxy.caddy
+	}
 }
 
 # The landing page: a static site with a client-side demo; it never talks to an environment.

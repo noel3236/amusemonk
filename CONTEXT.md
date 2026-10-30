@@ -371,7 +371,10 @@ An environment stays off until `/amusemonk/<env>/GATEWAY_BASE_URL` exists (box-d
 `AUTH_SECRET` and `SECRETS_KEY`, so a session or a stored key from one is useless in another. Each app user is granted
 SELECT/INSERT/UPDATE on its own database only; checked 2026-10-30: each sees only its own database and `USE` on any other
 fails with 1044. All share the box's instance role, so bucket separation is by configuration, not IAM.
-`amusemonk.com` and `www` serve nothing (Caddy aborts the connection) until the landing page exists.
+`amusemonk.com` serves the static landing page (`deploy/caddy/site/`) and `www` redirects to it. On every app host Caddy
+answers scanner paths (`/.env*`, `/.git*`, `*.php`, `/actuator*`, …) with a 404 itself, so they never reach an app or log as
+its errors; an environment never deployed answers "Not live yet" (503): `box-deploy.sh` writes `caddy/routes/<env>.caddy`
+from `revisions`, so deploying a prod switches it to forwarding.
 
 | Shared | What |
 |---|---|

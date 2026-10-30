@@ -33,6 +33,11 @@ mv revisions.new revisions
   printf 'COMPOSE_PROFILES=%s\n' "$(sed -nE 's/^([A-Z]+)_REVISION=.*/\1/p' revisions | tr 'A-Z' 'a-z' | paste -sd, -)"
 } > .env
 
+mkdir -p caddy/routes
+for e in sandbox fintech galaxy; do
+  if grep -q "^${e^^}_REVISION=" revisions; then echo "reverse_proxy $e-web:3400"; else echo 'respond "Not live yet." 503'; fi >"caddy/routes/$e.caddy"
+done
+
 aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$REGISTRY" >/dev/null
 $C pull --quiet "$ENV-web" "$ENV-worker" vpn caddy
 # Migrations run with the schema-owner account, kept out of the env files so the containers never see it.
