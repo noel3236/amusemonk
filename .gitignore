@@ -11,3 +11,6 @@ credentials/
 .storage/
 .claude/
 deploy/caddy/routes/
+
+# project secrets, never committed
+_private/
