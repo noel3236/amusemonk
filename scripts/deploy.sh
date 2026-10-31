@@ -5,7 +5,7 @@
 set -euo pipefail
 ENV="${1:-}"
 case $ENV in sandbox | fintech | galaxy) ;; *) echo "usage: scripts/deploy.sh sandbox|fintech|galaxy"; exit 2 ;; esac
-REGION=eu-west-2
+REGION=us-east-1
 REVISION=$(git rev-parse --short=12 HEAD)
 if [ -n "$(git status --porcelain)" ]; then
   [ "$ENV" = sandbox ] && [ "${ALLOW_DIRTY:-}" = 1 ] ||

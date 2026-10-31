@@ -294,7 +294,7 @@ the repo. **Changing or losing `SECRETS_KEY` makes every stored UAPI secret unre
 | D-34 | 2026-10-29 | Users paste their own API key + secret (generated on the main platform); the app verifies it, never creates keys | User decision. Supersedes the OTP key creation of D-17/D-23. Admin panel lists only amusemonk users' keys. |
 | D-35 | 2026-10-29 | Prod runs the app as `amusemonk_app` (SELECT, INSERT, UPDATE only); `amusemonk_admin` only runs migrations, and its URL is kept out of the containers' `.env` | The app never deletes rows (soft deletes only), so a compromised or buggy web process can't drop data or change the schema. |
 | D-36 | 2026-10-29 | Deploys go through SSM Run Command. Images are tagged by commit and the deploy fails unless the running containers carry that commit's label. SSH (22) is open to the owner IP only, with relay's key (`ec2-user`), for logmania's agent tooling (user, 2026-10-30) | "What is live" is always one exact commit; the only inbound admin surface is the one every other noel box has. |
-| D-37 | 2026-10-29 | Production region is `eu-west-2` (London) | User decision. A first build in `ap-south-1` was never asked for; it was torn down the same day. |
+| D-37 | 2026-10-29 | ~~Production region is `eu-west-2` (London)~~ Superseded by D-47 | User decision. A first build in `ap-south-1` was never asked for; it was torn down the same day. |
 | D-38 | 2026-10-29 | `sandbox` and `prod` run side by side on the same box and RDS instance, each with its own gateway, database + DB user, bucket, secrets and hostname; prod only takes images that went to sandbox first | User: test on sandbox and run prod with no data mix-up, without buying more. MySQL grants enforce the database split; separate secrets make sessions and stored keys non-transferable. |
 | D-39 | 2026-10-30 | Two prods instead of one: `fintech` (fintech.amusemonk.com) and `galaxy` (galaxy.amusemonk.com), each isolated like D-38; the bare domain serves nothing | User decision. The first single `prod` (database `amusemonk`, user `amusemonk_app`, `/amusemonk/prod/*`) was never used and was deleted on 2026-10-30. |
 | D-40 | 2026-10-30 | A **Profile** tab, cekko-style: users generate their payout key in amusemonk (needs 2FA; created `scope: uapi`, `whitelisted_ips: ["*"]`, connected at once, secret never shown), turn 2FA on/off and change their gateway password. Pasting a key (D-34) stays as the secondary path. Revoking a generated key deletes it on the gateway; a pasted one is only disconnected (`user_api_keys.origin`) User decision. Only amusemonk's own key is managed: other gateway keys may run the user's other integrations. A TOTP code is single-use, so replacing a key is revoke, then generate. Widened by D-43. |
@@ -304,6 +304,7 @@ the repo. **Changing or losing `SECRETS_KEY` makes every stored UAPI secret unre
 | D-44 | 2026-10-30 | `similar_files`: a file with the same payout count and total as another of the user's files from the last `window_days` (default 30; cancelled and rejected skipped) is **accepted with a warning** stored in `payout_files.warnings_json`. Its review page names the look-alikes with links, and Confirm Payment needs an unticked-by-default "this isn't a repeat" box; the server action refuses without it | User request: catch an accidental second upload of the same batch under new references, which the duplicate rules can't see. A warning, because a repeating batch (e.g. monthly) is legitimate. |
 | D-45 | 2026-10-30 | Payout keys are only generated inside amusemonk; pasting a key made elsewhere is removed (supersedes D-34) | User decision: users have no access to any gateway portal, so amusemonk is the only place they can make, see or delete a key. Keys pasted earlier stay revocable (disconnect only). |
 | D-46 | 2026-10-30 | Every on-screen date is a `<Time>` (`src/ui/time/`): shown in the viewer's zone, picked in the header (India, UTC, Singapore, Dubai; cookie `amusemonk-tz`, default IST); hover shows UTC and relative time. List date filters use the same zone. Business days stay IST whatever the viewer picks (`BUSINESS_ZONE`: date-window rule, today for uploads, the status CSV) | User request, after corona's time feature. A date that silently changes meaning with a display preference would break the rules, so only display and filtering follow the picker. |
+| D-47 | 2026-10-31 | Production region is `us-east-1` (N. Virginia); supersedes D-37. Rebuilt from scratch there (fresh secrets, empty databases; nothing carried from London) | User decision: the product is new and not yet in production, so a clean move is cheap now and costly later. London stays up until the Virginia build is verified, then is torn down on the user's word. |
 | D-12 | 2026-10-28 | ~~Real Postgres + `mock-gateway/`~~ Integration tests run against a real MySQL (`TEST_DATABASE_URL`) and an in-process fake gateway (`tests/helpers/fake-gateway.ts`) that implements the sandbox rules | The suite exercises the real SQL (locks, unique keys, CHECKs) without touching the sandbox. |
 
 ## 11. Open questions for the product owner
@@ -356,14 +357,14 @@ pnpm verify                             # typecheck + lint + tests
 ```
 `amusemonk_test` (same container) is `TEST_DATABASE_URL`; the test runner migrates it before running.
 
-## 14. Production (AWS `eu-west-2`, London — D-37): three environments on one box (D-38, D-39)
+## 14. Production (AWS `us-east-1`, N. Virginia — D-47): three environments on one box (D-38, D-39)
 
 | | **sandbox** | **fintech** (prod 1) | **galaxy** (prod 2) |
 |---|---|---|---|
 | URL | `sandbox.amusemonk.com` (noindex) | `fintech.amusemonk.com` | `galaxy.amusemonk.com` |
 | Gateway + login | `sandbox.celestiapayment.com` | **not set yet** | **not set yet** |
 | Database / user | `amusemonk_sandbox` / `amusemonk_sandbox_app` | `amusemonk_fintech` / `amusemonk_fintech_app` | `amusemonk_galaxy` / `amusemonk_galaxy_app` |
-| Files | S3 `amusemonk-sandbox-files-<account>-eu-west-2` | S3 `amusemonk-fintech-files-…` | S3 `amusemonk-galaxy-files-…` |
+| Files | S3 `amusemonk-sandbox-files-<account>-us-east-1` | S3 `amusemonk-fintech-files-…` | S3 `amusemonk-galaxy-files-…` |
 | Config | SSM `/amusemonk/sandbox/*` → `sandbox.env` | `/amusemonk/fintech/*` → `fintech.env` | `/amusemonk/galaxy/*` → `galaxy.env` |
 | Containers | `sandbox-web`, `sandbox-worker` | `fintech-web`, `fintech-worker` | `galaxy-web`, `galaxy-worker` |
 
