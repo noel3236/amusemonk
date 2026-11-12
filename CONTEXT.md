@@ -305,6 +305,7 @@ the repo. **Changing or losing `SECRETS_KEY` makes every stored UAPI secret unre
 | D-45 | 2026-10-30 | Payout keys are only generated inside amusemonk; pasting a key made elsewhere is removed (supersedes D-34) | User decision: users have no access to any gateway portal, so amusemonk is the only place they can make, see or delete a key. Keys pasted earlier stay revocable (disconnect only). |
 | D-46 | 2026-10-30 | Every on-screen date is a `<Time>` (`src/ui/time/`): shown in the viewer's zone, picked in the header (India, UTC, Singapore, Dubai; cookie `amusemonk-tz`, default IST); hover shows UTC and relative time. List date filters use the same zone. Business days stay IST whatever the viewer picks (`BUSINESS_ZONE`: date-window rule, today for uploads, the status CSV) | User request, after corona's time feature. A date that silently changes meaning with a display preference would break the rules, so only display and filtering follow the picker. |
 | D-47 | 2026-10-31 | Production region is `us-east-1` (N. Virginia); supersedes D-37. Rebuilt from scratch there (fresh secrets, empty databases; nothing carried from London) | User decision: the product is new and not yet in production, so a clean move is cheap now and costly later. London stays up until the Virginia build is verified, then is torn down on the user's word. |
+| D-48 | 2026-11-12 | Everything amusemonk ran on AWS was deleted until production starts: the box, its Elastic IP, RDS with its backups (no final snapshot), the four buckets, both ECR repos, every `/amusemonk/` parameter, both SGs and the RDS parameter and subnet groups. §14 is now the stack to rebuild. The non-secret setup (box user-data and launch settings, SG rules, IAM policy, bucket and ECR rules, DB parameters, plain config) is exported to the git-ignored `_private/aws-teardown-2026-11-12/`. IAM role `amusemonk-ec2` remains with no policies, because an organization SCP denies `iam:DeleteRole` | User decision: production starts next month and nothing should cost money until then. The rebuild gets fresh secrets and empty databases, as D-47 did. DNS points nowhere until the new box has an IP. |
 | D-12 | 2026-10-28 | ~~Real Postgres + `mock-gateway/`~~ Integration tests run against a real MySQL (`TEST_DATABASE_URL`) and an in-process fake gateway (`tests/helpers/fake-gateway.ts`) that implements the sandbox rules | The suite exercises the real SQL (locks, unique keys, CHECKs) without touching the sandbox. |
 
 ## 11. Open questions for the product owner
@@ -358,6 +359,9 @@ pnpm verify                             # typecheck + lint + tests
 `amusemonk_test` (same container) is `TEST_DATABASE_URL`; the test runner migrates it before running.
 
 ## 14. Production (AWS `us-east-1`, N. Virginia — D-47): three environments on one box (D-38, D-39)
+
+**Not running since 2026-11-12 (D-48).** Everything below was deleted and is the stack to rebuild. Start from
+`_private/aws-teardown-2026-11-12/` and give every environment fresh secrets.
 
 | | **sandbox** | **fintech** (prod 1) | **galaxy** (prod 2) |
 |---|---|---|---|

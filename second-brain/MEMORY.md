@@ -1,0 +1,2 @@
+- [amusemonk project](amusemonk-project.md) — port of file-to-api-payout; decided stack, auth, per-user UAPI keys, corona-must-not-match rule, VPN egress, desktop-first
+- [UI density](feedback-ui-density.md) — no page titles/descriptions; corona-level compactness; actions beside their data
