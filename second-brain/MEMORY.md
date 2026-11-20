@@ -1,2 +1,10 @@
-- [amusemonk project](amusemonk-project.md) — port of file-to-api-payout; decided stack, auth, per-user UAPI keys, corona-must-not-match rule, VPN egress, desktop-first
+- [Overview](overview.md) — file-to-UAPI payout bridge at amusemonk.com; nothing runs since the 2026-11-12 AWS teardown; who uses it, sibling repos, repo layout
+- [Architecture](architecture.md) — Next.js 16 + NextAuth→gatekeeper, Kysely/MySQL 8.4, worker, VPN egress; every table and key; integrations and env var names
+- [History](history.md) — dated timeline newest first: 2026-10-29 port, 10-30 environments/Profile/per-user duplicates, 10-31 us-east-1, 11-12 teardown
+- [Decisions](decisions.md) — D-1..D-48 summarised by theme with their why (verbatim idempotency key, locked rules, uploader confirms, per-user duplicates, generate-only keys)
+- [Product](product.md) — features by screen, upload rules users meet, known limits (burned references, no webhooks, prods never launched)
+- [How it works](how-it-works.md) — sign-in, egress, key generation, ingest pipeline, confirm, worker dispatch/poll/reconcile, lists, deploy, tests, with file paths
+- [Operations](operations.md) — run locally, test, deploy/rollback, the deleted us-east-1 stack, rebuild checklist, secret locations, gotchas
+- [Open work](open-work.md) — production rebuild, prod gateway URLs, untracked README, GHCR CI, open product questions, CONTEXT.md drift
+- [amusemonk project log](amusemonk-project.md) — the original running log: port of file-to-api-payout; stack, auth, per-user UAPI keys, corona-must-not-match rule, VPN egress, desktop-first, every infra step
 - [UI density](feedback-ui-density.md) — no page titles/descriptions; corona-level compactness; actions beside their data
